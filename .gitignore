@@ -1,0 +1,23 @@
+# Carpetas de Flutter/Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+build/
+
+# Archivos de Firebase
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+
+# IDEs
+.idea/
+.vscode/
+*.iml
+
+# Otros
+.DS_Store
+node_modules/
