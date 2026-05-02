@@ -4,8 +4,8 @@ import 'package:url_launcher/url_launcher.dart';
 class EnviarGithubScreen extends StatelessWidget {
   const EnviarGithubScreen({super.key});
 
-  // REEMPLAZA ESTE LINK CON TU LINK REAL DE GITHUB CUANDO LO TENGAS
-  final String githubUrl = 'https://github.com/TU_USUARIO/gestionrappi';
+  // LINK REAL DE TU REPOSITORIO
+  final String githubUrl = 'https://github.com/ARROYOCARLOS0478/IAM-proyecto-final-flutter-rappi-carlos-6I-';
 
   Future<void> _launchUrl() async {
     final Uri url = Uri.parse(githubUrl);
