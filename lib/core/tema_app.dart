@@ -1,35 +1,38 @@
 import 'package:flutter/material.dart';
 
-class AppTheme {
-  static const Color primaryColor = Color(0xFFFF441F); // Rappi Red/Orange
-  static const Color secondaryColor = Color(0xFF212121);
-  static const Color accentColor = Color(0xFFFFC107);
-  static const Color backgroundColor = Color(0xFFF8F9FA);
+class TemaApp {
+  static const Color naranjaPrincipal = Color(0xFFFF6C00); // Rappi Orange
+  static const Color rojoAcento = Color(0xFFE53935);
+  static const Color amarilloResaltado = Color(0xFFFFD700);
+  static const Color fondoClaro = Color(0xFFF8F9FA);
+  static const Color textoOscuro = Color(0xFF1A1A1A);
+  static const Color textoClaro = Color(0xFFFFFFFF);
 
-  static ThemeData lightTheme = ThemeData(
+  static ThemeData temaClaro = ThemeData(
     useMaterial3: true,
     colorScheme: ColorScheme.fromSeed(
-      seedColor: primaryColor,
-      primary: primaryColor,
-      secondary: secondaryColor,
+      seedColor: naranjaPrincipal,
+      primary: naranjaPrincipal,
+      secondary: rojoAcento,
       surface: Colors.white,
     ),
-    scaffoldBackgroundColor: backgroundColor,
+    scaffoldBackgroundColor: fondoClaro,
     appBarTheme: const AppBarTheme(
-      backgroundColor: primaryColor,
-      foregroundColor: Colors.white,
+      backgroundColor: naranjaPrincipal,
+      foregroundColor: textoClaro,
       elevation: 0,
       centerTitle: true,
       titleTextStyle: TextStyle(
         fontWeight: FontWeight.bold,
         fontSize: 20,
-        color: Colors.white,
+        color: textoClaro,
       ),
+      iconTheme: IconThemeData(color: textoClaro),
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
-        backgroundColor: primaryColor,
-        foregroundColor: Colors.white,
+        backgroundColor: naranjaPrincipal,
+        foregroundColor: textoClaro,
         minimumSize: const Size(double.infinity, 50),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
@@ -50,7 +53,7 @@ class AppTheme {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: primaryColor, width: 2),
+        borderSide: const BorderSide(color: naranjaPrincipal, width: 2),
       ),
       labelStyle: const TextStyle(color: Colors.grey),
     ),

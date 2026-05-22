@@ -1,53 +1,56 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../services/auth_service.dart';
-import 'home_screen.dart';
-import 'register_screen.dart';
-import 'forgot_password_screen.dart';
+import '../../proveedores/autenticacion_proveedor.dart';
+import '../home/home_pantalla.dart';
+import 'registro_pantalla.dart';
+import 'olvido_contrasena_pantalla.dart';
 
-class EmailLoginScreen extends StatefulWidget {
-  const EmailLoginScreen({super.key});
+class CorreoLoginPantalla extends StatefulWidget {
+  const CorreoLoginPantalla({super.key});
 
   @override
-  State<EmailLoginScreen> createState() => _EmailLoginScreenState();
+  State<CorreoLoginPantalla> createState() => _CorreoLoginPantallaState();
 }
 
-class _EmailLoginScreenState extends State<EmailLoginScreen> {
+class _CorreoLoginPantallaState extends State<CorreoLoginPantalla> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  bool _isLoading = false;
 
   void _login() async {
-    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
+    if (_emailController.text.trim().isEmpty || _passwordController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Por favor, completa todos los campos')),
       );
       return;
     }
 
-    setState(() => _isLoading = true);
-    final authService = Provider.of<AuthService>(context, listen: false);
-    final result = await authService.login(_emailController.text, _passwordController.text);
+    final authProv = Provider.of<AutenticacionProveedor>(context, listen: false);
+    final exito = await authProv.login(
+      _emailController.text.trim(), 
+      _passwordController.text.trim()
+    );
     
-    setState(() => _isLoading = false);
-    
-    if (result == null) {
+    if (exito) {
       if (mounted) {
         Navigator.pushAndRemoveUntil(
           context,
-          MaterialPageRoute(builder: (context) => const HomeScreen()),
+          MaterialPageRoute(builder: (context) => const HomePantalla()),
           (route) => false,
         );
       }
     } else {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result)));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(authProv.error ?? 'Error al iniciar sesión'))
+        );
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final authProv = Provider.of<AutenticacionProveedor>(context);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Ingresar con Correo'),
@@ -94,22 +97,22 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
               child: TextButton(
                 onPressed: () => Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => const ForgotPasswordScreen()),
+                  MaterialPageRoute(builder: (context) => const OlvidoContrasenaPantalla()),
                 ),
                 child: const Text('¿Olvidaste tu contraseña?'),
               ),
             ),
             const SizedBox(height: 30),
             ElevatedButton(
-              onPressed: _isLoading ? null : _login,
+              onPressed: authProv.estaCargando ? null : _login,
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFFF441F),
+                backgroundColor: const Color(0xFFFF6C00), // Rappi Orange
                 minimumSize: const Size(double.infinity, 55),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
               ),
-              child: _isLoading 
+              child: authProv.estaCargando 
                 ? const CircularProgressIndicator(color: Colors.white) 
-                : const Text('Iniciar Sesión', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                : const Text('Iniciar Sesión', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
             ),
             const SizedBox(height: 30),
             Row(
@@ -119,9 +122,9 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
                 TextButton(
                   onPressed: () => Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => const RegisterScreen()),
+                    MaterialPageRoute(builder: (context) => const RegistroPantalla()),
                   ),
-                  child: const Text('Regístrate aquí', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFFF441F))),
+                  child: const Text('Regístrate aquí', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFFF6C00))),
                 ),
               ],
             ),

@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-class Restaurante {
+class Comercio {
   final String? id;
   final String nombre;
   final String categoria;
@@ -8,9 +8,12 @@ class Restaurante {
   final String telefono;
   final String horario;
   final double calificacion;
+  final String imagenUrl;
+  final bool estaActivo;
+  final String duenoId;
   final DateTime? fechaRegistro;
 
-  Restaurante({
+  Comercio({
     this.id,
     required this.nombre,
     required this.categoria,
@@ -18,12 +21,15 @@ class Restaurante {
     required this.telefono,
     required this.horario,
     this.calificacion = 0.0,
+    this.imagenUrl = '',
+    this.estaActivo = true,
+    this.duenoId = '',
     this.fechaRegistro,
   });
 
-  factory Restaurante.fromFirestore(DocumentSnapshot doc) {
+  factory Comercio.fromFirestore(DocumentSnapshot doc) {
     Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
-    return Restaurante(
+    return Comercio(
       id: doc.id,
       nombre: data['nombre'] ?? '',
       categoria: data['categoria'] ?? '',
@@ -31,6 +37,9 @@ class Restaurante {
       telefono: data['telefono'] ?? '',
       horario: data['horario'] ?? '',
       calificacion: (data['calificacion'] ?? 0.0).toDouble(),
+      imagenUrl: data['imagenUrl'] ?? '',
+      estaActivo: data['estaActivo'] ?? data['isActive'] ?? true,
+      duenoId: data['duenoId'] ?? data['ownerId'] ?? '',
       fechaRegistro: (data['fechaRegistro'] as Timestamp?)?.toDate(),
     );
   }
@@ -43,6 +52,9 @@ class Restaurante {
       'telefono': telefono,
       'horario': horario,
       'calificacion': calificacion,
+      'imagenUrl': imagenUrl,
+      'estaActivo': estaActivo,
+      'duenoId': duenoId,
       'fechaRegistro': fechaRegistro ?? FieldValue.serverTimestamp(),
     };
   }

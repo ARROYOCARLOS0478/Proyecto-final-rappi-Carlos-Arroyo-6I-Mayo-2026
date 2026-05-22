@@ -7,6 +7,8 @@ class Repartidor {
   final String telefono;
   final String vehiculo;
   final String estado; // e.g., 'Activo', 'Inactivo'
+  final String? ubicacion; // Coordenadas o descripción de ubicación mock
+  final String? eta; // Tiempo estimado de entrega
   final DateTime? fechaRegistro;
 
   Repartidor({
@@ -16,6 +18,8 @@ class Repartidor {
     required this.telefono,
     required this.vehiculo,
     required this.estado,
+    this.ubicacion,
+    this.eta,
     this.fechaRegistro,
   });
 
@@ -28,6 +32,8 @@ class Repartidor {
       telefono: data['telefono'] ?? '',
       vehiculo: data['vehiculo'] ?? '',
       estado: data['estado'] ?? 'Inactivo',
+      ubicacion: data['ubicacion'] ?? data['location'],
+      eta: data['eta'],
       fechaRegistro: (data['fechaRegistro'] as Timestamp?)?.toDate(),
     );
   }
@@ -39,6 +45,8 @@ class Repartidor {
       'telefono': telefono,
       'vehiculo': vehiculo,
       'estado': estado,
+      'ubicacion': ubicacion,
+      'eta': eta,
       'fechaRegistro': fechaRegistro ?? FieldValue.serverTimestamp(),
     };
   }

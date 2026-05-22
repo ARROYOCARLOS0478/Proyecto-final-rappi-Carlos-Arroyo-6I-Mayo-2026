@@ -2,58 +2,57 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter/material.dart';
 
-import '../utils/translations.dart';
+import '../core/traducciones.dart';
 
-class AuthService with ChangeNotifier {
+class AutenticacionServicio with ChangeNotifier {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final GoogleSignIn _googleSignIn = GoogleSignIn.instance;
 
-  User? _user;
-  User? get user => _user;
+  User? _usuarioFirebase;
+  User? get usuarioFirebase => _usuarioFirebase;
 
-  AuthService() {
-    _initialize();
+  AutenticacionServicio() {
+    _inicializar();
     _auth.authStateChanges().listen((User? user) {
-      _user = user;
+      _usuarioFirebase = user;
       notifyListeners();
     });
   }
 
-  Future<void> _initialize() async {
+  Future<void> _inicializar() async {
     try {
       await _googleSignIn.initialize();
     } catch (e) {
-      debugPrint("Error initializing GoogleSignIn: $e");
+      debugPrint("Error al inicializar GoogleSignIn: $e");
     }
   }
 
-  // Login with Email and Password
-  Future<String?> login(String email, String password) async {
+  // Iniciar sesión con Correo y Contraseña
+  Future<String?> iniciarSesion(String email, String password) async {
     try {
       await _auth.signInWithEmailAndPassword(email: email, password: password);
       return null;
     } catch (e) {
-      return TranslationUtils.translateError(e);
+      return Traducciones.traducirError(e);
     }
   }
 
-  // Register with Email and Password
-  Future<String?> register(String email, String password) async {
+  // Registrar con Correo y Contraseña
+  Future<String?> registrar(String email, String password) async {
     try {
       await _auth.createUserWithEmailAndPassword(email: email, password: password);
       return null;
     } catch (e) {
-      return TranslationUtils.translateError(e);
+      return Traducciones.traducirError(e);
     }
   }
 
-  // Google Sign In
-  Future<String?> signInWithGoogle() async {
+  // Inicio de sesión con Google
+  Future<String?> iniciarConGoogle() async {
     try {
       final GoogleSignInAccount? googleUser = await _googleSignIn.authenticate();
       if (googleUser == null) return "Inicio de sesión cancelado.";
 
-      // En la versión 7.x, la autenticación y autorización son pasos separados
       final String? idToken = googleUser.authentication.idToken;
       final clientAuth = await googleUser.authorizationClient.authorizeScopes(['email', 'profile']);
       final String? accessToken = clientAuth.accessToken;
@@ -66,23 +65,23 @@ class AuthService with ChangeNotifier {
       await _auth.signInWithCredential(credential);
       return null;
     } catch (e) {
-      return TranslationUtils.translateError(e);
+      return Traducciones.traducirError(e);
     }
   }
 
-  // Forgot Password
-  Future<String?> resetPassword(String email) async {
+  // Recuperar Contraseña
+  Future<String?> recuperarContrasena(String email) async {
     try {
       await _auth.sendPasswordResetEmail(email: email);
       return null;
     } catch (e) {
-      return TranslationUtils.translateError(e);
+      return Traducciones.traducirError(e);
     }
   }
 
-  // Logout
-  Future<void> logout() async {
-    _user = null;
+  // Cerrar Sesión
+  Future<void> cerrarSesion() async {
+    _usuarioFirebase = null;
     notifyListeners();
     try {
       await _googleSignIn.signOut();

@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
-import 'repartidor_list_screen.dart';
-import 'restaurante_list_screen.dart';
-import '../services/auth_service.dart';
 import 'package:provider/provider.dart';
-import 'login_screen.dart';
+import '../catalogo/repartidor_lista_pantalla.dart';
+import '../catalogo/restaurante_lista_pantalla.dart';
+import '../../proveedores/autenticacion_proveedor.dart';
+import '../login/login_pantalla.dart';
 
-class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key});
+class HomePantalla extends StatelessWidget {
+  const HomePantalla({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final authService = Provider.of<AuthService>(context, listen: false);
+    final authProv = Provider.of<AutenticacionProveedor>(context);
 
     return Scaffold(
       appBar: AppBar(
@@ -18,14 +18,18 @@ class HomeScreen extends StatelessWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
-            onPressed: () {
-              // Feedback visual inmediato
+            onPressed: () async {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Cerrando sesión...'), duration: Duration(seconds: 1)),
               );
-              
-              // Llamamos al logout (que ahora es instantáneo en la UI)
-              authService.logout();
+              await authProv.logout();
+              if (context.mounted) {
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(builder: (context) => const LoginPantalla()),
+                  (route) => false,
+                );
+              }
             },
           ),
         ],
@@ -35,31 +39,34 @@ class HomeScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text(
-              '¿Qué deseas gestionar hoy?',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            const SizedBox(height: 20),
+            Text(
+              authProv.usuarioDatos != null 
+                  ? '¡Hola, ${authProv.usuarioDatos!.nombre}!\n¿Qué deseas gestionar hoy?'
+                  : '¿Qué deseas gestionar hoy?',
+              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 40),
-            _MenuCard(
+            _TarjetaMenu(
               title: 'Repartidores',
               subtitle: 'Gestionar flota de reparto',
               icon: Icons.delivery_dining,
-              color: const Color(0xFFFF441F),
+              color: const Color(0xFFFF6C00), // Rappi Orange
               onTap: () => Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const RepartidorListScreen()),
+                MaterialPageRoute(builder: (context) => const RepartidorListaPantalla()),
               ),
             ),
             const SizedBox(height: 20),
-            _MenuCard(
+            _TarjetaMenu(
               title: 'Restaurantes',
               subtitle: 'Gestionar establecimientos aliados',
               icon: Icons.restaurant,
-              color: const Color(0xFF00D19D),
+              color: const Color(0xFF00D19D), // Rappi Green
               onTap: () => Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const RestauranteListScreen()),
+                MaterialPageRoute(builder: (context) => const RestauranteListaPantalla()),
               ),
             ),
           ],
@@ -69,14 +76,14 @@ class HomeScreen extends StatelessWidget {
   }
 }
 
-class _MenuCard extends StatelessWidget {
+class _TarjetaMenu extends StatelessWidget {
   final String title;
   final String subtitle;
   final IconData icon;
   final Color color;
   final VoidCallback onTap;
 
-  const _MenuCard({
+  const _TarjetaMenu({
     required this.title,
     required this.subtitle,
     required this.icon,

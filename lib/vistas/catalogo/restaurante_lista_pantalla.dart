@@ -1,41 +1,40 @@
 import 'package:flutter/material.dart';
-import '../models/restaurante_model.dart';
-import '../services/firestore_service.dart';
-import 'restaurante_form_screen.dart';
+import '../../modelos/comercio_modelo.dart';
+import '../../servicios/firestore_servicio.dart';
+import 'restaurante_formulario_pantalla.dart';
+import '../../core/traducciones.dart';
 
-import '../utils/translations.dart';
-
-class RestauranteListScreen extends StatelessWidget {
-  const RestauranteListScreen({super.key});
+class RestauranteListaPantalla extends StatelessWidget {
+  const RestauranteListaPantalla({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final firestoreService = FirestoreService();
+    final firestoreServicio = FirestoreServicio();
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Restaurantes'),
       ),
-      body: StreamBuilder<List<Restaurante>>(
-        stream: firestoreService.getRestaurantes(),
+      body: StreamBuilder<List<Comercio>>(
+        stream: firestoreServicio.obtenerComercios(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
           if (snapshot.hasError) {
-            return Center(child: Text(TranslationUtils.translateError(snapshot.error)));
+            return Center(child: Text(Traducciones.traducirError(snapshot.error)));
           }
           if (!snapshot.hasData || snapshot.data!.isEmpty) {
             return const Center(child: Text('No hay restaurantes registrados.'));
           }
 
-          final restaurantes = snapshot.data!;
+          final comercios = snapshot.data!;
 
           return ListView.builder(
             padding: const EdgeInsets.all(12),
-            itemCount: restaurantes.length,
+            itemCount: comercios.length,
             itemBuilder: (context, index) {
-              final restaurante = restaurantes[index];
+              final c = comercios[index];
               return Card(
                 margin: const EdgeInsets.only(bottom: 12),
                 child: ListTile(
@@ -43,8 +42,8 @@ class RestauranteListScreen extends StatelessWidget {
                     backgroundColor: const Color(0xFF00D19D).withOpacity(0.1),
                     child: const Icon(Icons.restaurant, color: Color(0xFF00D19D)),
                   ),
-                  title: Text(restaurante.nombre, style: const TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: Text('${restaurante.categoria} • ${restaurante.direccion}'),
+                  title: Text(c.nombre, style: const TextStyle(fontWeight: FontWeight.bold)),
+                  subtitle: Text('${c.categoria} • ${c.direccion}'),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -53,13 +52,13 @@ class RestauranteListScreen extends StatelessWidget {
                         onPressed: () => Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => RestauranteFormScreen(restaurante: restaurante),
+                            builder: (context) => RestauranteFormularioPantalla(comercio: c),
                           ),
                         ),
                       ),
                       IconButton(
                         icon: const Icon(Icons.delete, color: Colors.red),
-                        onPressed: () => _confirmDelete(context, firestoreService, restaurante),
+                        onPressed: () => _confirmarEliminar(context, firestoreServicio, c),
                       ),
                     ],
                   ),
@@ -72,7 +71,7 @@ class RestauranteListScreen extends StatelessWidget {
       floatingActionButton: FloatingActionButton(
         onPressed: () => Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => const RestauranteFormScreen()),
+          MaterialPageRoute(builder: (context) => const RestauranteFormularioPantalla()),
         ),
         backgroundColor: const Color(0xFF00D19D),
         child: const Icon(Icons.add, color: Colors.white),
@@ -80,17 +79,17 @@ class RestauranteListScreen extends StatelessWidget {
     );
   }
 
-  void _confirmDelete(BuildContext context, FirestoreService service, Restaurante restaurante) {
+  void _confirmarEliminar(BuildContext context, FirestoreServicio servicio, Comercio comercio) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Eliminar Restaurante'),
-        content: Text('¿Está seguro de que desea eliminar a ${restaurante.nombre}?'),
+        content: Text('¿Está seguro de que desea eliminar a ${comercio.nombre}?'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
           TextButton(
             onPressed: () {
-              service.deleteRestaurante(restaurante.id!);
+              servicio.eliminarComercio(comercio.id!);
               Navigator.pop(context);
             },
             child: const Text('Eliminar', style: TextStyle(color: Colors.red)),

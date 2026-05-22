@@ -1,18 +1,18 @@
 import 'package:flutter/material.dart';
-import '../models/restaurante_model.dart';
-import '../services/firestore_service.dart';
-import '../utils/translations.dart';
+import '../../modelos/comercio_modelo.dart';
+import '../../servicios/firestore_servicio.dart';
+import '../../core/traducciones.dart';
 
-class RestauranteFormScreen extends StatefulWidget {
-  final Restaurante? restaurante;
+class RestauranteFormularioPantalla extends StatefulWidget {
+  final Comercio? comercio;
 
-  const RestauranteFormScreen({super.key, this.restaurante});
+  const RestauranteFormularioPantalla({super.key, this.comercio});
 
   @override
-  State<RestauranteFormScreen> createState() => _RestauranteFormScreenState();
+  State<RestauranteFormularioPantalla> createState() => _RestauranteFormularioPantallaState();
 }
 
-class _RestauranteFormScreenState extends State<RestauranteFormScreen> {
+class _RestauranteFormularioPantallaState extends State<RestauranteFormularioPantalla> {
   final _formKey = GlobalKey<FormState>();
   final _nombreController = TextEditingController();
   final _categoriaController = TextEditingController();
@@ -25,13 +25,13 @@ class _RestauranteFormScreenState extends State<RestauranteFormScreen> {
   @override
   void initState() {
     super.initState();
-    if (widget.restaurante != null) {
-      _nombreController.text = widget.restaurante!.nombre;
-      _categoriaController.text = widget.restaurante!.categoria;
-      _direccionController.text = widget.restaurante!.direccion;
-      _telefonoController.text = widget.restaurante!.telefono;
-      _horarioController.text = widget.restaurante!.horario;
-      _calificacion = widget.restaurante!.calificacion;
+    if (widget.comercio != null) {
+      _nombreController.text = widget.comercio!.nombre;
+      _categoriaController.text = widget.comercio!.categoria;
+      _direccionController.text = widget.comercio!.direccion;
+      _telefonoController.text = widget.comercio!.telefono;
+      _horarioController.text = widget.comercio!.horario;
+      _calificacion = widget.comercio!.calificacion;
     }
   }
 
@@ -39,27 +39,31 @@ class _RestauranteFormScreenState extends State<RestauranteFormScreen> {
     if (_formKey.currentState!.validate()) {
       setState(() => _isSaving = true);
       
-      final restaurante = Restaurante(
-        id: widget.restaurante?.id,
-        nombre: _nombreController.text,
-        categoria: _categoriaController.text,
-        direccion: _direccionController.text,
-        telefono: _telefonoController.text,
-        horario: _horarioController.text,
+      final nuevoComercio = Comercio(
+        id: widget.comercio?.id,
+        nombre: _nombreController.text.trim(),
+        categoria: _categoriaController.text.trim(),
+        direccion: _direccionController.text.trim(),
+        telefono: _telefonoController.text.trim(),
+        horario: _horarioController.text.trim(),
         calificacion: _calificacion,
+        imagenUrl: widget.comercio?.imagenUrl ?? '',
+        estaActivo: widget.comercio?.estaActivo ?? true,
+        duenoId: widget.comercio?.duenoId ?? '',
+        fechaRegistro: widget.comercio?.fechaRegistro,
       );
 
       try {
-        await FirestoreService().saveRestaurante(restaurante);
+        await FirestoreServicio().guardarComercio(nuevoComercio);
         if (mounted) Navigator.pop(context);
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(TranslationUtils.translateError(e))),
+            SnackBar(content: Text(Traducciones.traducirError(e))),
           );
         }
       } finally {
-        setState(() => _isSaving = false);
+        if (mounted) setState(() => _isSaving = false);
       }
     }
   }
@@ -68,7 +72,7 @@ class _RestauranteFormScreenState extends State<RestauranteFormScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.restaurante == null ? 'Nuevo Restaurante' : 'Editar Restaurante'),
+        title: Text(widget.comercio == null ? 'Nuevo Restaurante' : 'Editar Restaurante'),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
@@ -80,32 +84,32 @@ class _RestauranteFormScreenState extends State<RestauranteFormScreen> {
               TextFormField(
                 controller: _nombreController,
                 decoration: const InputDecoration(labelText: 'Nombre del Restaurante', prefixIcon: Icon(Icons.restaurant)),
-                validator: (value) => value!.isEmpty ? 'Campo requerido' : null,
+                validator: (value) => value!.trim().isEmpty ? 'Campo requerido' : null,
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _categoriaController,
                 decoration: const InputDecoration(labelText: 'Categoría (Pizza, Burger, etc.)', prefixIcon: Icon(Icons.category)),
-                validator: (value) => value!.isEmpty ? 'Campo requerido' : null,
+                validator: (value) => value!.trim().isEmpty ? 'Campo requerido' : null,
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _direccionController,
                 decoration: const InputDecoration(labelText: 'Dirección', prefixIcon: Icon(Icons.location_on)),
-                validator: (value) => value!.isEmpty ? 'Campo requerido' : null,
+                validator: (value) => value!.trim().isEmpty ? 'Campo requerido' : null,
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _telefonoController,
                 decoration: const InputDecoration(labelText: 'Teléfono', prefixIcon: Icon(Icons.phone)),
                 keyboardType: TextInputType.phone,
-                validator: (value) => value!.isEmpty ? 'Campo requerido' : null,
+                validator: (value) => value!.trim().isEmpty ? 'Campo requerido' : null,
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _horarioController,
                 decoration: const InputDecoration(labelText: 'Horario', prefixIcon: Icon(Icons.access_time)),
-                validator: (value) => value!.isEmpty ? 'Campo requerido' : null,
+                validator: (value) => value!.trim().isEmpty ? 'Campo requerido' : null,
               ),
               const SizedBox(height: 24),
               const Text('Calificación:', style: TextStyle(fontWeight: FontWeight.bold)),
@@ -121,8 +125,12 @@ class _RestauranteFormScreenState extends State<RestauranteFormScreen> {
               const SizedBox(height: 32),
               ElevatedButton(
                 onPressed: _isSaving ? null : _save,
-                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF00D19D)),
-                child: _isSaving ? const CircularProgressIndicator(color: Colors.white) : const Text('Guardar'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF00D19D),
+                ),
+                child: _isSaving 
+                    ? const CircularProgressIndicator(color: Colors.white) 
+                    : const Text('Guardar', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
               ),
             ],
           ),

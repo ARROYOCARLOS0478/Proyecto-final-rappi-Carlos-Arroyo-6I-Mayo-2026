@@ -1,24 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../services/auth_service.dart';
-import 'home_screen.dart';
+import '../../proveedores/autenticacion_proveedor.dart';
+import '../home/home_pantalla.dart';
 
-class RegisterScreen extends StatefulWidget {
-  const RegisterScreen({super.key});
+class RegistroPantalla extends StatefulWidget {
+  const RegistroPantalla({super.key});
 
   @override
-  State<RegisterScreen> createState() => _RegisterScreenState();
+  State<RegistroPantalla> createState() => _RegistroPantallaState();
 }
 
-class _RegisterScreenState extends State<RegisterScreen> {
+class _RegistroPantallaState extends State<RegistroPantalla> {
   final _emailController = TextEditingController();
+  final _nameController = TextEditingController();
+  final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
-  bool _isLoading = false;
 
   void _register() async {
-    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Por favor, completa todos los campos')));
+    if (_emailController.text.trim().isEmpty || 
+        _passwordController.text.trim().isEmpty ||
+        _nameController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Por favor, completa los campos requeridos (Correo, Nombre y Contraseña)'))
+      );
       return;
     }
 
@@ -27,29 +32,33 @@ class _RegisterScreenState extends State<RegisterScreen> {
       return;
     }
 
-    setState(() => _isLoading = true);
-    final authService = Provider.of<AuthService>(context, listen: false);
-    final result = await authService.register(_emailController.text, _passwordController.text);
+    final authProv = Provider.of<AutenticacionProveedor>(context, listen: false);
+    final exito = await authProv.registro(
+      _emailController.text.trim(), 
+      _passwordController.text.trim(),
+      _nameController.text.trim(),
+      _phoneController.text.trim()
+    );
     
-    setState(() => _isLoading = false);
-    
-    if (result == null) {
+    if (exito) {
       if (mounted) {
         Navigator.pushAndRemoveUntil(
           context,
-          MaterialPageRoute(builder: (context) => const HomeScreen()),
+          MaterialPageRoute(builder: (context) => const HomePantalla()),
           (route) => false,
         );
       }
     } else {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result)));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(authProv.error ?? 'Error al registrarse')));
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final authProv = Provider.of<AutenticacionProveedor>(context);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Crear Cuenta'),
@@ -63,7 +72,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const SizedBox(height: 20),
+            const SizedBox(height: 10),
             const Text(
               '¡Únete a Rappi!',
               style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
@@ -72,44 +81,61 @@ class _RegisterScreenState extends State<RegisterScreen> {
               'Crea una cuenta para empezar a gestionar',
               style: TextStyle(color: Colors.grey),
             ),
-            const SizedBox(height: 40),
+            const SizedBox(height: 30),
+            TextField(
+              controller: _nameController,
+              decoration: const InputDecoration(
+                labelText: 'Nombre Completo *',
+                prefixIcon: Icon(Icons.person_outline),
+              ),
+            ),
+            const SizedBox(height: 15),
             TextField(
               controller: _emailController,
               decoration: const InputDecoration(
-                labelText: 'Correo Electrónico',
+                labelText: 'Correo Electrónico *',
                 prefixIcon: Icon(Icons.email_outlined),
               ),
               keyboardType: TextInputType.emailAddress,
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 15),
+            TextField(
+              controller: _phoneController,
+              decoration: const InputDecoration(
+                labelText: 'Teléfono / Celular',
+                prefixIcon: Icon(Icons.phone_outlined),
+              ),
+              keyboardType: TextInputType.phone,
+            ),
+            const SizedBox(height: 15),
             TextField(
               controller: _passwordController,
               decoration: const InputDecoration(
-                labelText: 'Contraseña',
+                labelText: 'Contraseña *',
                 prefixIcon: Icon(Icons.lock_outline),
               ),
               obscureText: true,
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 15),
             TextField(
               controller: _confirmPasswordController,
               decoration: const InputDecoration(
-                labelText: 'Confirmar Contraseña',
+                labelText: 'Confirmar Contraseña *',
                 prefixIcon: Icon(Icons.lock_reset),
               ),
               obscureText: true,
             ),
-            const SizedBox(height: 40),
+            const SizedBox(height: 35),
             ElevatedButton(
-              onPressed: _isLoading ? null : _register,
+              onPressed: authProv.estaCargando ? null : _register,
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFFF441F),
+                backgroundColor: const Color(0xFFFF6C00), // Rappi Orange
                 minimumSize: const Size(double.infinity, 55),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
               ),
-              child: _isLoading 
+              child: authProv.estaCargando 
                 ? const CircularProgressIndicator(color: Colors.white) 
-                : const Text('Registrarse', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                : const Text('Registrarse', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
             ),
             const SizedBox(height: 20),
             Row(
@@ -118,7 +144,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 const Text('¿Ya tienes cuenta?'),
                 TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: const Text('Inicia sesión', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFFF441F))),
+                  child: const Text('Inicia sesión', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFFF6C00))),
                 ),
               ],
             ),
@@ -128,4 +154,3 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 }
-

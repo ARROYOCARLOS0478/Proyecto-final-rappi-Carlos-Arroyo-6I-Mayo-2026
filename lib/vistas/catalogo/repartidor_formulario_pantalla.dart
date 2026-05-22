@@ -1,18 +1,18 @@
 import 'package:flutter/material.dart';
-import '../models/repartidor_model.dart';
-import '../services/firestore_service.dart';
-import '../utils/translations.dart';
+import '../../modelos/repartidor_modelo.dart';
+import '../../servicios/firestore_servicio.dart';
+import '../../core/traducciones.dart';
 
-class RepartidorFormScreen extends StatefulWidget {
+class RepartidorFormularioPantalla extends StatefulWidget {
   final Repartidor? repartidor;
 
-  const RepartidorFormScreen({super.key, this.repartidor});
+  const RepartidorFormularioPantalla({super.key, this.repartidor});
 
   @override
-  State<RepartidorFormScreen> createState() => _RepartidorFormScreenState();
+  State<RepartidorFormularioPantalla> createState() => _RepartidorFormularioPantallaState();
 }
 
-class _RepartidorFormScreenState extends State<RepartidorFormScreen> {
+class _RepartidorFormularioPantallaState extends State<RepartidorFormularioPantalla> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _nombreController;
   late TextEditingController _emailController;
@@ -32,30 +32,31 @@ class _RepartidorFormScreenState extends State<RepartidorFormScreen> {
       _estado = widget.repartidor!.estado;
     }
   }
-  void _save() async {
+
+  void _guardar() async {
     if (_formKey.currentState!.validate()) {
       setState(() => _isLoading = true);
       
-      final firestoreService = FirestoreService();
-      final newRepartidor = Repartidor(
+      final firestoreServicio = FirestoreServicio();
+      final nuevoRepartidor = Repartidor(
         id: widget.repartidor?.id,
-        nombre: _nombreController.text,
-        email: _emailController.text,
-        telefono: _telefonoController.text,
+        nombre: _nombreController.text.trim(),
+        email: _emailController.text.trim(),
+        telefono: _telefonoController.text.trim(),
         vehiculo: _vehiculo,
         estado: _estado,
         fechaRegistro: widget.repartidor?.fechaRegistro,
       );
 
       try {
-        await firestoreService.saveRepartidor(newRepartidor);
+        await firestoreServicio.guardarRepartidor(nuevoRepartidor);
         if (mounted) {
           Navigator.pop(context);
         }
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(TranslationUtils.translateError(e))),
+            SnackBar(content: Text(Traducciones.traducirError(e))),
           );
         }
       } finally {
@@ -67,7 +68,9 @@ class _RepartidorFormScreenState extends State<RepartidorFormScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(widget.repartidor == null ? 'Agregar Repartidor' : 'Editar Repartidor')),
+      appBar: AppBar(
+        title: Text(widget.repartidor == null ? 'Agregar Repartidor' : 'Editar Repartidor'),
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
         child: Form(
@@ -78,21 +81,21 @@ class _RepartidorFormScreenState extends State<RepartidorFormScreen> {
               TextFormField(
                 controller: _nombreController,
                 decoration: const InputDecoration(labelText: 'Nombre Completo', prefixIcon: Icon(Icons.person)),
-                validator: (value) => value!.isEmpty ? 'Campo requerido' : null,
+                validator: (value) => value!.trim().isEmpty ? 'Campo requerido' : null,
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _emailController,
                 decoration: const InputDecoration(labelText: 'Correo Electrónico', prefixIcon: Icon(Icons.email)),
                 keyboardType: TextInputType.emailAddress,
-                validator: (value) => value!.isEmpty ? 'Campo requerido' : null,
+                validator: (value) => value!.trim().isEmpty ? 'Campo requerido' : null,
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _telefonoController,
                 decoration: const InputDecoration(labelText: 'Teléfono', prefixIcon: Icon(Icons.phone)),
                 keyboardType: TextInputType.phone,
-                validator: (value) => value!.isEmpty ? 'Campo requerido' : null,
+                validator: (value) => value!.trim().isEmpty ? 'Campo requerido' : null,
               ),
               const SizedBox(height: 24),
               const Text('Vehículo', style: TextStyle(fontWeight: FontWeight.bold)),
@@ -126,8 +129,13 @@ class _RepartidorFormScreenState extends State<RepartidorFormScreen> {
               ),
               const SizedBox(height: 40),
               ElevatedButton(
-                onPressed: _isLoading ? null : _save,
-                child: _isLoading ? const CircularProgressIndicator(color: Colors.white) : const Text('Guardar'),
+                onPressed: _isLoading ? null : _guardar,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFFF6C00), // Rappi Orange
+                ),
+                child: _isLoading 
+                    ? const CircularProgressIndicator(color: Colors.white) 
+                    : const Text('Guardar', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
               ),
             ],
           ),

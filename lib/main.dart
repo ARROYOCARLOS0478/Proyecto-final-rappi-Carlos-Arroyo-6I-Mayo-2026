@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
 import 'firebase_options.dart';
-import 'services/auth_service.dart';
-import 'screens/login_screen.dart';
-import 'screens/home_screen.dart';
-import 'theme/app_theme.dart';
+
+// Importaciones del Núcleo y Estructura en Español
+import 'core/tema_app.dart';
+import 'proveedores/autenticacion_proveedor.dart';
+import 'proveedores/carrito_proveedor.dart';
+import 'vistas/login/login_pantalla.dart';
+import 'vistas/home/home_pantalla.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -15,13 +18,14 @@ void main() async {
       options: DefaultFirebaseOptions.currentPlatform,
     );
   } catch (e) {
-    debugPrint('Firebase initialization error: $e');
+    debugPrint('Error de inicialización de Firebase: $e');
   }
 
   runApp(
     MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => AuthService()),
+        ChangeNotifierProvider(create: (_) => AutenticacionProveedor()),
+        ChangeNotifierProvider(create: (_) => CarritoProveedor()),
       ],
       child: const RappiApp(),
     ),
@@ -36,25 +40,29 @@ class RappiApp extends StatelessWidget {
     return MaterialApp(
       title: 'Gestión Rappi',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.lightTheme,
-      home: const AuthWrapper(),
-      routes: {
-        '/login': (context) => const LoginScreen(),
-        '/home': (context) => const HomeScreen(),
-      },
+      theme: TemaApp.temaClaro,
+      home: const EnvoltorioAutenticacion(),
     );
   }
 }
 
-class AuthWrapper extends StatelessWidget {
-  const AuthWrapper({super.key});
+class EnvoltorioAutenticacion extends StatelessWidget {
+  const EnvoltorioAutenticacion({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final authService = Provider.of<AuthService>(context);
+    final authProv = Provider.of<AutenticacionProveedor>(context);
     
-    // If user is logged in, show the home screen, otherwise show login
-    return authService.user != null ? const HomeScreen() : const LoginScreen();
+    // Si el usuario está cargando datos de Firestore, mostramos un cargador circular
+    if (authProv.estaCargando && authProv.usuarioFirebase != null) {
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(color: TemaApp.naranjaPrincipal),
+        ),
+      );
+    }
+
+    // Si el usuario está autenticado, muestra la pantalla principal (Home), si no, la de Login.
+    return authProv.estaAutenticado ? const HomePantalla() : const LoginPantalla();
   }
 }
-

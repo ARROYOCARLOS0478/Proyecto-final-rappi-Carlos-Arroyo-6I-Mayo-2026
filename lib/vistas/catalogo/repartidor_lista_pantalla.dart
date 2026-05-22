@@ -1,20 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../models/repartidor_model.dart';
-import '../services/firestore_service.dart';
-import '../services/auth_service.dart';
-import 'repartidor_form_screen.dart';
-import 'login_screen.dart';
+import '../../modelos/repartidor_modelo.dart';
+import '../../servicios/firestore_servicio.dart';
+import '../../proveedores/autenticacion_proveedor.dart';
+import 'repartidor_formulario_pantalla.dart';
+import '../login/login_pantalla.dart';
+import '../../core/traducciones.dart';
 
-import '../utils/translations.dart';
-
-class RepartidorListScreen extends StatelessWidget {
-  const RepartidorListScreen({super.key});
+class RepartidorListaPantalla extends StatelessWidget {
+  const RepartidorListaPantalla({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final firestoreService = FirestoreService();
-    final authService = Provider.of<AuthService>(context);
+    final firestoreServicio = FirestoreServicio();
+    final authProv = Provider.of<AutenticacionProveedor>(context);
 
     return Scaffold(
       appBar: AppBar(
@@ -23,22 +22,26 @@ class RepartidorListScreen extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.logout),
             onPressed: () async {
-              await authService.logout();
+              await authProv.logout();
               if (context.mounted) {
-                Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const LoginScreen()));
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(builder: (context) => const LoginPantalla()),
+                  (route) => false,
+                );
               }
             },
           ),
         ],
       ),
       body: StreamBuilder<List<Repartidor>>(
-        stream: firestoreService.getRepartidores(),
+        stream: firestoreServicio.obtenerRepartidores(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
           if (snapshot.hasError) {
-            return Center(child: Text(TranslationUtils.translateError(snapshot.error)));
+            return Center(child: Text(Traducciones.traducirError(snapshot.error)));
           }
           if (!snapshot.hasData || snapshot.data!.isEmpty) {
             return const Center(child: Text('No hay repartidores registrados.'));
@@ -71,12 +74,12 @@ class RepartidorListScreen extends StatelessWidget {
                         icon: const Icon(Icons.edit, color: Colors.blue),
                         onPressed: () => Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (context) => RepartidorFormScreen(repartidor: r)),
+                          MaterialPageRoute(builder: (context) => RepartidorFormularioPantalla(repartidor: r)),
                         ),
                       ),
                       IconButton(
                         icon: const Icon(Icons.delete, color: Colors.red),
-                        onPressed: () => _confirmDelete(context, firestoreService, r.id!),
+                        onPressed: () => _confirmarEliminar(context, firestoreServicio, r.id!),
                       ),
                     ],
                   ),
@@ -89,14 +92,14 @@ class RepartidorListScreen extends StatelessWidget {
       floatingActionButton: FloatingActionButton(
         onPressed: () => Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => const RepartidorFormScreen()),
+          MaterialPageRoute(builder: (context) => const RepartidorFormularioPantalla()),
         ),
-        child: const Icon(Icons.add),
+        child: const Icon(Icons.add, color: Colors.white),
       ),
     );
   }
 
-  void _confirmDelete(BuildContext context, FirestoreService service, String id) {
+  void _confirmarEliminar(BuildContext context, FirestoreServicio servicio, String id) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -106,7 +109,7 @@ class RepartidorListScreen extends StatelessWidget {
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
           TextButton(
             onPressed: () {
-              service.deleteRepartidor(id);
+              servicio.eliminarRepartidor(id);
               Navigator.pop(context);
             },
             child: const Text('Eliminar', style: TextStyle(color: Colors.red)),

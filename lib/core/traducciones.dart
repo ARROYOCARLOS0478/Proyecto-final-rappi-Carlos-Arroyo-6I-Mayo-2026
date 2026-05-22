@@ -1,5 +1,5 @@
-class TranslationUtils {
-  static String translateError(dynamic error) {
+class Traducciones {
+  static String traducirError(dynamic error) {
     String message = error.toString().toLowerCase();
     
     // --- Autenticación (Firebase Auth) ---
