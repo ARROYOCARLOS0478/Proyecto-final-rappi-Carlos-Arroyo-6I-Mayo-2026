@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../proveedores/autenticacion_proveedor.dart';
-import '../home/home_pantalla.dart';
+import '../admin/admin_home_pantalla.dart';
+import '../registro/setup_direccion_pantalla.dart';
 
 class RegistroPantalla extends StatefulWidget {
   const RegistroPantalla({super.key});
@@ -17,42 +18,85 @@ class _RegistroPantallaState extends State<RegistroPantalla> {
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
 
+  // Función principal de registro con filtro de Rol
   void _register() async {
-    if (_emailController.text.trim().isEmpty || 
-        _passwordController.text.trim().isEmpty ||
-        _nameController.text.trim().isEmpty) {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
+    final nombre = _nameController.text.trim();
+    final telefono = _phoneController.text.trim();
+    final confirmarPass = _confirmPasswordController.text.trim();
+
+    // 1. Validaciones básicas de campos vacíos
+    if (email.isEmpty || password.isEmpty || nombre.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Por favor, completa los campos requeridos (Correo, Nombre y Contraseña)'))
+        const SnackBar(content: Text('Completa los campos obligatorios')),
       );
       return;
     }
 
-    if (_passwordController.text != _confirmPasswordController.text) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Las contraseñas no coinciden')));
+    // 2. Validación de coincidencia de contraseñas
+    if (password != confirmarPass) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Las contraseñas no coinciden')),
+      );
       return;
     }
 
     final authProv = Provider.of<AutenticacionProveedor>(context, listen: false);
-    final exito = await authProv.registro(
-      _emailController.text.trim(), 
-      _passwordController.text.trim(),
-      _nameController.text.trim(),
-      _phoneController.text.trim()
-    );
-    
-    if (exito) {
-      if (mounted) {
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (context) => const HomePantalla()),
-          (route) => false,
-        );
+
+    // 3. Lógica de redirección según el tipo de correo
+    if (email.toLowerCase().endsWith('@rappi.com')) {
+      // --- REGISTRO DE ADMINISTRADOR (Directo) ---
+      final exito = await authProv.registro(
+        email,
+        password,
+        nombre,
+        telefono,
+      );
+
+      if (exito) {
+        if (mounted) {
+          // Limpia el historial de navegación y va al Home de Admin
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (context) => const AdminHomePantalla()),
+            (route) => false,
+          );
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(authProv.error ?? 'Error al registrar Administrador')),
+          );
+        }
       }
     } else {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(authProv.error ?? 'Error al registrarse')));
-      }
+      // --- REGISTRO DE CLIENTE (Pasa por Dirección) ---
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => SetupDireccionPantalla(
+            datosRegistro: {
+              'nombre': nombre,
+              'email': email,
+              'telefono': telefono,
+              'password': password,
+            },
+          ),
+        ),
+      );
     }
+  }
+
+  @override
+  void dispose() {
+    // Es buena práctica limpiar los controladores al cerrar la pantalla
+    _emailController.dispose();
+    _nameController.dispose();
+    _phoneController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    super.dispose();
   }
 
   @override
@@ -131,11 +175,24 @@ class _RegistroPantallaState extends State<RegistroPantalla> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFFF6C00), // Rappi Orange
                 minimumSize: const Size(double.infinity, 55),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(30),
+                ),
               ),
-              child: authProv.estaCargando 
-                ? const CircularProgressIndicator(color: Colors.white) 
-                : const Text('Registrarse', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+              child: authProv.estaCargando
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                    )
+                  : const Text(
+                      'Registrarse',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
             ),
             const SizedBox(height: 20),
             Row(
@@ -144,7 +201,13 @@ class _RegistroPantallaState extends State<RegistroPantalla> {
                 const Text('¿Ya tienes cuenta?'),
                 TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: const Text('Inicia sesión', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFFF6C00))),
+                  child: const Text(
+                    'Inicia sesión',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFFFF6C00),
+                    ),
+                  ),
                 ),
               ],
             ),

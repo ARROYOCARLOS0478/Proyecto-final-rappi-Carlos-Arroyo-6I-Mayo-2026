@@ -28,6 +28,14 @@ class CarritoProveedor with ChangeNotifier {
     _cargarCarrito();
   }
 
+  // --- MÉTODO AGREGADO PARA SOLUCIONAR EL ERROR ---
+  int obtenerCantidad(String productoId) {
+    if (_items.containsKey(productoId)) {
+      return _items[productoId]!['cantidad'] as int;
+    }
+    return 0;
+  }
+
   // Cargar el carrito guardado localmente
   Future<void> _cargarCarrito() async {
     try {
@@ -36,7 +44,9 @@ class CarritoProveedor with ChangeNotifier {
         final data = prefs.getString('carrito_guardado');
         if (data != null) {
           final Map<String, dynamic> decoded = json.decode(data);
-          _items = decoded.map((key, value) => MapEntry(key, Map<String, dynamic>.from(value)));
+          _items = decoded.map(
+            (key, value) => MapEntry(key, Map<String, dynamic>.from(value)),
+          );
           notifyListeners();
         }
       }
@@ -58,23 +68,18 @@ class CarritoProveedor with ChangeNotifier {
   // Agregar producto al carrito
   void agregarProducto(Producto producto) {
     if (producto.id == null) return;
-    
+
     if (_items.containsKey(producto.id)) {
-      _items.update(producto.id!, (existente) => {
-        'productoId': existente['productoId'],
-        'nombre': existente['nombre'],
-        'precio': existente['precio'],
-        'cantidad': (existente['cantidad'] as int) + 1,
-        'imagenUrl': existente['imagenUrl'],
-      });
+      _items[producto.id!]!.update('cantidad', (val) => (val as int) + 1);
     } else {
-      _items.putIfAbsent(producto.id!, () => {
+      _items[producto.id!] = {
         'productoId': producto.id,
+        'comercioId': producto.comercioId,
         'nombre': producto.nombre,
         'precio': producto.precio,
         'cantidad': 1,
         'imagenUrl': producto.imagenUrl,
-      });
+      };
     }
     notifyListeners();
     _guardarCarritoLocal();
@@ -85,13 +90,7 @@ class CarritoProveedor with ChangeNotifier {
     if (!_items.containsKey(productoId)) return;
 
     if ((_items[productoId]!['cantidad'] as int) > 1) {
-      _items.update(productoId, (existente) => {
-        'productoId': existente['productoId'],
-        'nombre': existente['nombre'],
-        'precio': existente['precio'],
-        'cantidad': (existente['cantidad'] as int) - 1,
-        'imagenUrl': existente['imagenUrl'],
-      });
+      _items[productoId]!.update('cantidad', (val) => (val as int) - 1);
     } else {
       _items.remove(productoId);
     }
@@ -102,6 +101,14 @@ class CarritoProveedor with ChangeNotifier {
   // Eliminar completamente un ítem del carrito
   void eliminarItem(String productoId) {
     _items.remove(productoId);
+    notifyListeners();
+    _guardarCarritoLocal();
+  }
+
+  // Incrementar cantidad de un item ya existente por su ID
+  void incrementarDesdeId(String productoId) {
+    if (!_items.containsKey(productoId)) return;
+    _items[productoId]!.update('cantidad', (val) => (val as int) + 1);
     notifyListeners();
     _guardarCarritoLocal();
   }

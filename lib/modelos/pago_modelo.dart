@@ -3,16 +3,20 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class Pago {
   final String? id;
   final String pedidoId;
+  final double monto;
   final String metodo; // 'Tarjeta', 'Efectivo', 'Simulado'
-  final String estado; // 'Pendiente', 'Completado', 'Fallido'
-  final DateTime? fecha;
+  final String estado; // 'pendiente', 'completado', 'fallido'
+  final String? referencia;
+  final DateTime? fechaPago;
 
   Pago({
     this.id,
     required this.pedidoId,
+    required this.monto,
     required this.metodo,
     required this.estado,
-    this.fecha,
+    this.referencia,
+    this.fechaPago,
   });
 
   factory Pago.fromFirestore(DocumentSnapshot doc) {
@@ -20,18 +24,25 @@ class Pago {
     return Pago(
       id: doc.id,
       pedidoId: data['pedidoId'] ?? data['orderId'] ?? '',
+      monto: (data['monto'] ?? data['amount'] ?? 0.0).toDouble(),
       metodo: data['metodo'] ?? data['method'] ?? 'Efectivo',
-      estado: data['estado'] ?? data['status'] ?? 'Pendiente',
-      fecha: (data['fecha'] ?? data['timestamp'] as Timestamp?)?.toDate(),
+      estado: data['estado'] ?? data['status'] ?? 'pendiente',
+      referencia: data['referencia'] ?? data['reference'],
+      fechaPago:
+          (data['fechaPago'] ?? data['timestamp'] as Timestamp?)?.toDate(),
     );
   }
 
   Map<String, dynamic> toFirestore() {
     return {
       'pedidoId': pedidoId,
+      'monto': monto,
       'metodo': metodo,
       'estado': estado,
-      'fecha': fecha ?? FieldValue.serverTimestamp(),
+      'referencia': referencia,
+      'fechaPago': fechaPago != null
+          ? Timestamp.fromDate(fechaPago!)
+          : FieldValue.serverTimestamp(),
     };
   }
 }

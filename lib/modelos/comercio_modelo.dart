@@ -11,6 +11,8 @@ class Comercio {
   final String imagenUrl;
   final bool estaActivo;
   final String duenoId;
+  final String tiempoEntrega;
+  final double costoEnvio;
   final DateTime? fechaRegistro;
 
   Comercio({
@@ -24,6 +26,8 @@ class Comercio {
     this.imagenUrl = '',
     this.estaActivo = true,
     this.duenoId = '',
+    this.tiempoEntrega = '20-30 min',
+    this.costoEnvio = 0.0,
     this.fechaRegistro,
   });
 
@@ -40,6 +44,8 @@ class Comercio {
       imagenUrl: data['imagenUrl'] ?? '',
       estaActivo: data['estaActivo'] ?? data['isActive'] ?? true,
       duenoId: data['duenoId'] ?? data['ownerId'] ?? '',
+      tiempoEntrega: data['tiempoEntrega'] ?? data['deliveryTime'] ?? '20-30 min',
+      costoEnvio: (data['costoEnvio'] ?? data['deliveryCost'] ?? 0.0).toDouble(),
       fechaRegistro: (data['fechaRegistro'] as Timestamp?)?.toDate(),
     );
   }
@@ -55,6 +61,8 @@ class Comercio {
       'imagenUrl': imagenUrl,
       'estaActivo': estaActivo,
       'duenoId': duenoId,
+      'tiempoEntrega': tiempoEntrega,
+      'costoEnvio': costoEnvio,
       'fechaRegistro': fechaRegistro ?? FieldValue.serverTimestamp(),
     };
   }

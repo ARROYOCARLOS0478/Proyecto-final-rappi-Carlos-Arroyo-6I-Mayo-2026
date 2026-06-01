@@ -30,7 +30,7 @@ class Producto {
       descripcion: data['descripcion'] ?? '',
       precio: (data['precio'] ?? data['price'] ?? 0.0).toDouble(),
       stock: data['stock'] ?? 0,
-      categoria: data['categoria'] ?? '',
+      categoria: data['categoria'] ?? 'General',
       imagenUrl: data['imagenUrl'] ?? '',
     );
   }
