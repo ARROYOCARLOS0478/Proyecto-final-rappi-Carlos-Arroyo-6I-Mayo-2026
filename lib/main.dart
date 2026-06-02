@@ -27,22 +27,10 @@ void main() async {
     );
     await FirebaseAuth.instance.setPersistence(Persistence.LOCAL);
 
-    // ✅ CAMBIO AQUÍ: No uses 'await' para los datos semilla.
-    /*
-    DatosSemillaServicio()
-        .sembrarDatos()
-        .then((_) {
-          debugPrint("✅ Datos semilla verificados");
-        })
-        .catchError((e) {
-          debugPrint("❌ Error en datos semilla: $e");
-        });
-    */
   } catch (e) {
     debugPrint('Error de inicialización de Firebase: $e');
   }
 
-  // ✅ Esto DEBE ejecutarse sí o sí
   runApp(
     MultiProvider(
       providers: [

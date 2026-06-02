@@ -8,6 +8,7 @@ import '../../proveedores/carrito_proveedor.dart';
 import '../../servicios/firestore_servicio.dart';
 import '../carrito/carrito_pantalla.dart';
 import 'detalle_producto_pantalla.dart';
+import 'package:gestionrappi/proveedores/autenticacion_proveedor.dart';
 
 class DetalleComercioPantalla extends StatelessWidget {
   final Comercio comercio;
@@ -421,28 +422,23 @@ class _ProductoCard extends StatelessWidget {
                         bottom: 8,
                         right: 8,
                         child: GestureDetector(
-                          onTap: () => carrito.agregarProducto(producto),
-                          child: Container(
-                            decoration: const BoxDecoration(
-                              color: _verde,
-                              shape: BoxShape.circle,
-                            ),
-                            padding: const EdgeInsets.all(6),
-                            child: cantidad > 0
-                                ? Text(
-                                    '+$cantidad',
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w900,
-                                      fontSize: 14,
-                                    ),
-                                  )
-                                : const Icon(
-                                    Icons.add,
-                                    color: Colors.white,
-                                    size: 22,
-                                  ),
-                          ),
+                          onTap: () {
+                            // --- BLOQUEO DE ADMINISTRADOR ---
+                            final userProvider = context.read<AutenticacionProveedor>();
+                            if (userProvider.usuarioDatos?.rol == 'admin') {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text("Los administradores no pueden agregar productos."),
+                                  backgroundColor: Colors.redAccent,
+                                  duration: Duration(seconds: 2),
+                                ),
+                              );
+                              return;
+                            }
+                            // --------------------------------
+
+                            carrito.agregarProducto(producto);
+                          },
                         ),
                       ),
                     ],

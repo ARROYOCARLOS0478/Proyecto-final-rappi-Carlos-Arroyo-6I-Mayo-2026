@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../modelos/producto_modelo.dart';
 import '../../proveedores/carrito_proveedor.dart';
 import '../../core/tema_app.dart';
+import 'package:gestionrappi/proveedores/autenticacion_proveedor.dart';
 
 class DetalleProductoPantalla extends StatefulWidget {
   final Producto producto;
@@ -157,18 +158,40 @@ class _DetalleProductoPantallaState extends State<DetalleProductoPantalla> {
                   Expanded(
                     child: ElevatedButton(
                       onPressed: () {
-                        // Agregamos al proveedor N veces
+                        final authProv = context.read<AutenticacionProveedor>();
+                        
+                        // Imprime en consola para debuguear (puedes borrarlo luego)
+                        debugPrint("Rol detectado: ${authProv.usuarioDatos?.rol}");
+
+                        // 1. EL CANDADO: Verificamos si es admin
+                        if (authProv.usuarioDatos?.rol == 'administrador') {
+                          // Cerramos el detalle producto primero para que no se quede abierto
+                          Navigator.pop(context); 
+                          
+                          // Mostramos el mensaje de error
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text("Acceso denegado: Los administradores no pueden realizar compras."),
+                              backgroundColor: Colors.redAccent,
+                              behavior: SnackBarBehavior.floating,
+                              duration: Duration(seconds: 3),
+                            ),
+                          );
+                          return; // 🔥 IMPORTANTE: Este return detiene TODO. No llega al for.
+                        }
+
+                        // 2. Lógica normal para Clientes (solo si NO es admin)
                         for (int i = 0; i < cantidad; i++) {
                           context.read<CarritoProveedor>().agregarProducto(
                             widget.producto,
                           );
                         }
+                        
                         Navigator.pop(context);
+                        
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: Text(
-                              "Se agregaron $cantidad ${widget.producto.nombre}",
-                            ),
+                            content: Text("Se agregaron $cantidad ${widget.producto.nombre}"),
                             backgroundColor: const Color(0xFF00C5AB),
                           ),
                         );
