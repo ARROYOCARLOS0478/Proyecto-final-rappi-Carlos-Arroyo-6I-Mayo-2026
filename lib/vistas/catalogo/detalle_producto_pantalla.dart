@@ -1,3 +1,5 @@
+// detalle_producto_pantalla.dart
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../modelos/producto_modelo.dart';
