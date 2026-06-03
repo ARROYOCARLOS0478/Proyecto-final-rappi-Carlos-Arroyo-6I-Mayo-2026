@@ -1,5 +1,4 @@
-// pedido_proveedor.dart  (reemplaza / complementa tu PedidoProveedor)
-//
+// pedido_proveedor.dart
 // Cambios clave respecto a la versión anterior:
 //  • repartidorId va a nivel RAÍZ del documento (no dentro de items)
 //  • estado inicial = "Pendiente"

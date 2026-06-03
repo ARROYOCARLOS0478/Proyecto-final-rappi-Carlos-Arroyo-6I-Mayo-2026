@@ -423,22 +423,45 @@ class _ProductoCard extends StatelessWidget {
                         right: 8,
                         child: GestureDetector(
                           onTap: () {
-                            // --- BLOQUEO DE ADMINISTRADOR ---
-                            final userProvider = context.read<AutenticacionProveedor>();
-                            if (userProvider.usuarioDatos?.rol == 'admin') {
+                            // 1. Obtenemos el provider
+                            final authProv = context
+                                .read<AutenticacionProveedor>();
+
+                            // 2. Bloqueo con el rol "administrador"
+                            if (authProv.usuarioDatos?.rol?.toLowerCase() ==
+                                'administrador') {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
-                                  content: Text("Los administradores no pueden agregar productos."),
+                                  content: Text(
+                                    "Modo Administrador: No tienes permisos para realizar compras.",
+                                  ),
                                   backgroundColor: Colors.redAccent,
+                                  behavior: SnackBarBehavior.floating,
                                   duration: Duration(seconds: 2),
                                 ),
                               );
-                              return;
+                              return; // Detiene la ejecución para que no se agregue al carrito
                             }
-                            // --------------------------------
 
-                            carrito.agregarProducto(producto);
+                            // 3. Lógica normal para clientes
+                            context.read<CarritoProveedor>().agregarProducto(
+                              producto,
+                            );
                           },
+                          child: Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: const BoxDecoration(
+                              color: Color(
+                                0xFF00C5AB,
+                              ), // Tu color verde de Rappi
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              Icons.add,
+                              color: Colors.white,
+                              size: 20,
+                            ),
+                          ),
                         ),
                       ),
                     ],

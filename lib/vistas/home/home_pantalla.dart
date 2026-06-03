@@ -1,8 +1,7 @@
-// home_pantalla.dart
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../modelos/comercio_modelo.dart';
+import '../../modelos/pedido_modelo.dart';
 import '../../proveedores/autenticacion_proveedor.dart';
 import '../../proveedores/carrito_proveedor.dart';
 import '../../servicios/firestore_servicio.dart';
@@ -11,6 +10,7 @@ import '../catalogo/seccion_negocios_pantalla.dart';
 import '../perfil/perfil_pantalla.dart';
 import '../perfil/gestion_direcciones_pantalla.dart';
 import '../carrito/carrito_pantalla.dart';
+import '../seguimiento/seguimiento_pedido_pantalla.dart';
 
 class HomePantalla extends StatefulWidget {
   const HomePantalla({super.key});
@@ -120,8 +120,8 @@ class _HomePantallaState extends State<HomePantalla> {
               child: Stack(
                 children: [
                   IndexedStack(index: _tabActual, children: pantallas),
-                  if (carritoP.cantidadTotal > 0 && _tabActual == 0)
-                    _buildSeguimientoFlotante(),
+                  if (_tabActual == 0)
+                    _buildSeguimientoRealTime(authProv.usuarioDatos?.uid),
                 ],
               ),
             ),
@@ -129,6 +129,88 @@ class _HomePantallaState extends State<HomePantalla> {
         ),
       ),
       bottomNavigationBar: _buildBottomNav(),
+    );
+  }
+
+  Widget _buildSeguimientoRealTime(String? userId) {
+    if (userId == null) return const SizedBox.shrink();
+
+    return StreamBuilder<List<Pedido>>(
+      stream: _firestoreServicio.obtenerPedidosActivos(userId),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return const SizedBox.shrink();
+        }
+
+        final ultimoPedido = snapshot.data!.first;
+
+        return Positioned(
+          bottom: 20,
+          left: 20,
+          right: 20,
+          child: GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) =>
+                      SeguimientoPedidoPantalla(pedidoId: ultimoPedido.id!),
+                ),
+              );
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+              decoration: BoxDecoration(
+                color: _azulOscuro,
+                borderRadius: BorderRadius.circular(22),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Colors.black26,
+                    blurRadius: 16,
+                    offset: Offset(0, 6),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.delivery_dining, color: _verde, size: 28),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          ultimoPedido.estado.toUpperCase(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 12,
+                          ),
+                        ),
+                        Text(
+                          'Pedido de ${ultimoPedido.comercioNombre}',
+                          style: const TextStyle(
+                            color: Colors.white60,
+                            fontSize: 10,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(
+                    Icons.arrow_forward_ios,
+                    color: Colors.white,
+                    size: 14,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -145,61 +227,6 @@ class _HomePantallaState extends State<HomePantalla> {
           fontSize: 10,
           fontWeight: FontWeight.bold,
           letterSpacing: 2,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSeguimientoFlotante() {
-    return Positioned(
-      bottom: 20,
-      left: 20,
-      right: 20,
-      child: GestureDetector(
-        onTap: () => Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const CarritoPantalla()),
-        ),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-          decoration: BoxDecoration(
-            color: _azulOscuro,
-            borderRadius: BorderRadius.circular(22),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withAlpha(60),
-                blurRadius: 16,
-                offset: const Offset(0, 6),
-              ),
-            ],
-          ),
-          child: const Row(
-            children: [
-              Icon(Icons.delivery_dining, color: _verde, size: 28),
-              SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'TU PEDIDO ESTÁ EN CAMINO',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w900,
-                        fontSize: 12,
-                      ),
-                    ),
-                    Text(
-                      'Llegada estimada: 15-20 min',
-                      style: TextStyle(color: Colors.white60, fontSize: 10),
-                    ),
-                  ],
-                ),
-              ),
-              Icon(Icons.arrow_forward_ios, color: Colors.white, size: 14),
-            ],
-          ),
         ),
       ),
     );
@@ -227,13 +254,11 @@ class _HomePantallaState extends State<HomePantalla> {
     final direccion = auth.usuarioDatos?.direcciones.isNotEmpty == true
         ? auth.usuarioDatos!.direcciones.first
         : null;
-
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 10),
       child: Column(
         children: [
           Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Expanded(
                 child: GestureDetector(
@@ -251,10 +276,8 @@ class _HomePantallaState extends State<HomePantalla> {
                         style: TextStyle(
                           fontSize: 22,
                           fontWeight: FontWeight.w900,
-                          letterSpacing: -0.5,
                         ),
                       ),
-                      const SizedBox(height: 2),
                       Row(
                         children: [
                           Flexible(
@@ -272,7 +295,6 @@ class _HomePantallaState extends State<HomePantalla> {
                               ),
                             ),
                           ),
-                          const SizedBox(width: 2),
                           const Icon(
                             Icons.keyboard_arrow_down,
                             size: 16,
@@ -284,29 +306,30 @@ class _HomePantallaState extends State<HomePantalla> {
                   ),
                 ),
               ),
-              const SizedBox(width: 12),
-              // Carrito reactivo: SOLO aparece si hay items
               if (carrito.cantidadTotal > 0) _buildCartBadge(carrito),
             ],
           ),
           const SizedBox(height: 14),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            decoration: BoxDecoration(
-              color: Colors.grey[100],
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: const TextField(
-              decoration: InputDecoration(
-                icon: Icon(Icons.search, size: 20, color: Colors.grey),
-                hintText: '¿Qué quisieras hoy?',
-                hintStyle: TextStyle(color: Colors.grey, fontSize: 14),
-                border: InputBorder.none,
-                contentPadding: EdgeInsets.symmetric(vertical: 14),
-              ),
-            ),
-          ),
+          _buildSearchBar(),
         ],
+      ),
+    );
+  }
+
+  Widget _buildSearchBar() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        color: Colors.grey[100],
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: const TextField(
+        decoration: InputDecoration(
+          icon: Icon(Icons.search, size: 20, color: Colors.grey),
+          hintText: '¿Qué quisieras hoy?',
+          border: InputBorder.none,
+          contentPadding: EdgeInsets.symmetric(vertical: 14),
+        ),
       ),
     );
   }
@@ -317,22 +340,20 @@ class _HomePantallaState extends State<HomePantalla> {
         context,
         MaterialPageRoute(builder: (_) => const CarritoPantalla()),
       ),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
+      child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
           color: _verde,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: _verde.withAlpha(80),
+              color: _verde.withValues(alpha: 0.3),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
           ],
         ),
         child: Row(
-          mainAxisSize: MainAxisSize.min,
           children: [
             const Icon(
               Icons.shopping_bag_outlined,
@@ -345,12 +366,80 @@ class _HomePantallaState extends State<HomePantalla> {
               style: const TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.w900,
-                fontSize: 14,
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  // 1. Agrega este Widget arriba de tu lista de comercios
+  Widget _buildBannerSeguimiento(String usuarioId) {
+    return StreamBuilder<List<Pedido>>(
+      stream: FirestoreServicio().obtenerPedidosActivos(usuarioId),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData || snapshot.data!.isEmpty)
+          return const SizedBox.shrink();
+
+        final pedido = snapshot.data!.first; // Tomamos el pedido más reciente
+
+        return GestureDetector(
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) =>
+                  SeguimientoPedidoPantalla(pedidoId: pedido.id!),
+            ),
+          ),
+          child: Container(
+            margin: const EdgeInsets.all(15),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+            decoration: BoxDecoration(
+              color: const Color(0xFF00C5AB), // Tu Turquesa
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10)],
+            ),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.delivery_dining,
+                  color: Colors.white,
+                  size: 30,
+                ),
+                const SizedBox(width: 15),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        "TU PEDIDO ESTÁ EN CAMINO",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 12,
+                        ),
+                      ),
+                      Text(
+                        "Sigue a tu repartidor en tiempo real",
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.9),
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(
+                  Icons.arrow_forward_ios,
+                  color: Colors.white,
+                  size: 15,
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -392,7 +481,7 @@ class _HomePantallaState extends State<HomePantalla> {
                         borderRadius: BorderRadius.circular(22),
                         gradient: LinearGradient(
                           colors: [
-                            Colors.black.withAlpha(200),
+                            Colors.black.withValues(alpha: 0.7),
                             Colors.transparent,
                           ],
                           begin: Alignment.centerLeft,
@@ -417,7 +506,6 @@ class _HomePantallaState extends State<HomePantalla> {
                                 color: Colors.white,
                                 fontSize: 8,
                                 fontWeight: FontWeight.w900,
-                                letterSpacing: 1.5,
                               ),
                             ),
                           ),
@@ -473,7 +561,6 @@ class _HomePantallaState extends State<HomePantalla> {
       padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
       child: Row(
         children: _categoriasGrandes.asMap().entries.map((e) {
-          final isFirst = e.key == 0;
           final cat = e.value;
           return Expanded(
             child: GestureDetector(
@@ -486,7 +573,7 @@ class _HomePantallaState extends State<HomePantalla> {
               ),
               child: Container(
                 height: 115,
-                margin: EdgeInsets.only(right: isFirst ? 10 : 0),
+                margin: EdgeInsets.only(right: e.key == 0 ? 10 : 0),
                 decoration: BoxDecoration(
                   color: cat['color'],
                   borderRadius: BorderRadius.circular(22),
@@ -497,7 +584,7 @@ class _HomePantallaState extends State<HomePantalla> {
                     Image.network(
                       cat['img'],
                       height: 62,
-                      errorBuilder: (_, __, ___) =>
+                      errorBuilder: (ctx, _, __) =>
                           const Icon(Icons.store, size: 50),
                     ),
                     const SizedBox(height: 6),
@@ -506,7 +593,6 @@ class _HomePantallaState extends State<HomePantalla> {
                       style: const TextStyle(
                         fontWeight: FontWeight.w900,
                         fontSize: 10,
-                        letterSpacing: 0.5,
                       ),
                     ),
                   ],
@@ -546,7 +632,7 @@ class _HomePantallaState extends State<HomePantalla> {
                   child: Image.network(
                     cat['img'],
                     fit: BoxFit.contain,
-                    errorBuilder: (_, __, ___) => const Icon(Icons.store),
+                    errorBuilder: (ctx, _, __) => const Icon(Icons.store),
                   ),
                 ),
                 const SizedBox(height: 6),
@@ -555,7 +641,6 @@ class _HomePantallaState extends State<HomePantalla> {
                   style: const TextStyle(
                     fontWeight: FontWeight.w900,
                     fontSize: 8,
-                    letterSpacing: 0.3,
                   ),
                 ),
               ],
@@ -627,13 +712,6 @@ class _HomePantallaState extends State<HomePantalla> {
           color: Colors.white,
           borderRadius: BorderRadius.circular(22),
           border: Border.all(color: Colors.grey.shade100, width: 1.5),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withAlpha(8),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
         ),
         child: Row(
           children: [
@@ -644,7 +722,7 @@ class _HomePantallaState extends State<HomePantalla> {
                 width: 72,
                 height: 72,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Container(
+                errorBuilder: (ctx, _, __) => Container(
                   width: 72,
                   height: 72,
                   color: Colors.grey[200],
@@ -664,7 +742,6 @@ class _HomePantallaState extends State<HomePantalla> {
                       fontSize: 13,
                     ),
                   ),
-                  const SizedBox(height: 2),
                   Text(
                     c.categoria.toUpperCase(),
                     style: const TextStyle(
@@ -692,7 +769,6 @@ class _HomePantallaState extends State<HomePantalla> {
                       ),
                       const SizedBox(width: 10),
                       const Icon(Icons.star, size: 12, color: Colors.amber),
-                      const SizedBox(width: 2),
                       Text(
                         c.calificacion.toStringAsFixed(1),
                         style: const TextStyle(
@@ -719,16 +795,6 @@ class _HomePantallaState extends State<HomePantalla> {
       selectedItemColor: _naranja,
       unselectedItemColor: Colors.grey[400],
       type: BottomNavigationBarType.fixed,
-      backgroundColor: Colors.white,
-      elevation: 14,
-      selectedLabelStyle: const TextStyle(
-        fontWeight: FontWeight.w900,
-        fontSize: 10,
-      ),
-      unselectedLabelStyle: const TextStyle(
-        fontWeight: FontWeight.w900,
-        fontSize: 10,
-      ),
       items: const [
         BottomNavigationBarItem(icon: Icon(Icons.home_filled), label: 'INICIO'),
         BottomNavigationBarItem(

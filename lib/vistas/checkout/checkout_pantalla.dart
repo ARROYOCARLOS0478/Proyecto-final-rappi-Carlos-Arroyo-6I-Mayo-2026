@@ -60,7 +60,7 @@ class _CheckoutPantallaState extends State<CheckoutPantalla> {
 
     final pedidoId = await pedidoProv.crearPedido(
       usuarioId: authProv.usuarioDatos?.uid ?? "user_temp",
-      comercioId: "LITTLE_CAESARS_01",
+      comercioId: carrito.items.values.first['comercioId'],
       itemsCarrito: carrito.items,
       total: _totalFinal,
       direccion: direccion,

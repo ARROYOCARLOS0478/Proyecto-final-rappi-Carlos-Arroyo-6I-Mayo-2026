@@ -167,6 +167,20 @@ class FirestoreServicio {
   }
   // --- PEDIDOS ---
 
+  // Este sirve para el Banner del Home (Solo los que están en proceso)
+  Stream<List<Pedido>> obtenerPedidosActivos(String usuarioId) {
+    return _db
+        .collection(Constantes.coleccionPedidos)
+        .where('usuarioId', isEqualTo: usuarioId)
+        .where('estado', whereIn: ['Pendiente', 'Preparando', 'En Camino'])
+        .orderBy('fechaCreacion', descending: true)
+        .snapshots()
+        .map(
+          (snap) => snap.docs.map((doc) => Pedido.fromFirestore(doc)).toList(),
+        );
+  }
+
+  // Este sirve para el Perfil (Todo el historial de pedidos)
   Stream<List<Pedido>> obtenerPedidosUsuario(String usuarioId) {
     return _db
         .collection(Constantes.coleccionPedidos)
@@ -174,8 +188,7 @@ class FirestoreServicio {
         .orderBy('fechaCreacion', descending: true)
         .snapshots()
         .map(
-          (snapshot) =>
-              snapshot.docs.map((doc) => Pedido.fromFirestore(doc)).toList(),
+          (snap) => snap.docs.map((doc) => Pedido.fromFirestore(doc)).toList(),
         );
   }
 
@@ -223,8 +236,10 @@ class FirestoreServicio {
     return _db
         .collection(Constantes.coleccionUsuarios)
         .snapshots()
-        .map((snapshot) =>
-            snapshot.docs.map((doc) => Usuario.fromFirestore(doc)).toList());
+        .map(
+          (snapshot) =>
+              snapshot.docs.map((doc) => Usuario.fromFirestore(doc)).toList(),
+        );
   }
 
   Future<void> eliminarUsuario(String uid) {
