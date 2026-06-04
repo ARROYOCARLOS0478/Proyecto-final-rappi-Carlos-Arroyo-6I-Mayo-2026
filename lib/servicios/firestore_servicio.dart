@@ -111,6 +111,54 @@ class FirestoreServicio {
     return _db.collection(Constantes.coleccionComercios).doc(id).delete();
   }
 
+  Future<Comercio?> obtenerComercio(String comercioId) async {
+    final doc = await _db
+        .collection(Constantes.coleccionComercios)
+        .doc(comercioId)
+        .get();
+    if (!doc.exists) return null;
+    return Comercio.fromFirestore(doc);
+  }
+
+  Stream<List<Comercio>> obtenerComerciosConOferta() {
+    return _db
+        .collection(Constantes.coleccionComercios)
+        .where('descuentoNegocio', isGreaterThan: 0)
+        .orderBy('descuentoNegocio', descending: true)
+        .snapshots()
+        .map(
+          (snapshot) =>
+              snapshot.docs.map((doc) => Comercio.fromFirestore(doc)).toList(),
+        );
+  }
+
+  Stream<List<Comercio>> obtenerFavoritosUsuario(String uid) {
+    return _db
+        .collection(Constantes.coleccionUsuarios)
+        .doc(uid)
+        .snapshots()
+        .asyncMap((userDoc) async {
+          if (!userDoc.exists) return <Comercio>[];
+          final favoritos = List<String>.from(
+            userDoc.data()?['favoritos'] ?? [],
+          );
+          if (favoritos.isEmpty) return <Comercio>[];
+          final List<Comercio> result = [];
+          for (int i = 0; i < favoritos.length; i += 10) {
+            final chunk = favoritos.sublist(
+              i,
+              i + 10 > favoritos.length ? favoritos.length : i + 10,
+            );
+            final snap = await _db
+                .collection(Constantes.coleccionComercios)
+                .where(FieldPath.documentId, whereIn: chunk)
+                .get();
+            result.addAll(snap.docs.map((doc) => Comercio.fromFirestore(doc)));
+          }
+          return result;
+        });
+  }
+
   /// Verificar si hay comercios en Firestore
   Future<bool> hayComerciosEnFirestore() async {
     final snap = await _db

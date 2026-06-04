@@ -1,21 +1,42 @@
-// seguimiento_pedido_pantalla.dart actualizado con diseño Figma Premium
+// seguimiento_pedido_pantalla.dart
+// ✅ TAREA 1: Repartidor real desde Firestore con nombre, vehículo y ETA
+// ✅ TAREA 2: Barra de progreso que avanza con el estado del pedido
+// ✅ TAREA 3: Mapa simulado con ruta y marcador animado
+
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:async';
+import 'dart:math' as math;
 
-// ── Mapeo estado → progreso (Sincronizado con Figma) ─────────────────────────
+// ── Mapeo estado → progreso ────────────────────────────────────────────────
 double _estadoAProgreso(String? estado) {
-  switch (estado) {
+  switch (estado?.toLowerCase()) {
     case 'pendiente':
-      return 0.15;
+      return 0.0;
     case 'preparando':
-      return 0.45;
+      return 0.33;
     case 'en camino':
-      return 0.80;
+      return 0.66;
     case 'entregado':
       return 1.0;
     default:
-      return 0.05;
+      return 0.0;
+  }
+}
+
+// ── Mapeo estado → índice del step (0-3) ──────────────────────────────────
+int _estadoAStep(String? estado) {
+  switch (estado?.toLowerCase()) {
+    case 'pendiente':
+      return 0;
+    case 'preparando':
+      return 1;
+    case 'en camino':
+      return 2;
+    case 'entregado':
+      return 3;
+    default:
+      return 0;
   }
 }
 
@@ -34,20 +55,33 @@ class _SeguimientoPedidoPantallaState extends State<SeguimientoPedidoPantalla>
   Timer? _timer;
   StreamSubscription<DocumentSnapshot>? _pedidoSub;
   Map<String, dynamic>? _pedidoData;
+
+  // ✅ TAREA 1: Ahora usamos el modelo Repartidor completo
   Map<String, dynamic>? _repartidorData;
+  String? _repartidorVehiculo;
+  String? _repartidorEta;
+
+  // ✅ TAREA 2: Step actual para el stepper
+  int _stepActual = 0;
+  DateTime? _ultimaTransicionLocal;
 
   late AnimationController _checkController;
   late Animation<double> _checkAnimation;
   late AnimationController _progressController;
   late Animation<double> _progressAnimation;
 
-  // Colores exactos de tu diseño
+  // ✅ TAREA 3: Animación del marcador en el mapa simulado
+  late AnimationController _markerController;
+  late Animation<double> _markerAnimation;
+
   static const Color _verde = Color(0xFF00C5AB);
+  static const Color _naranja = Color(0xFFFF441F);
   static const Color _fondoClaro = Color(0xFFF8F9FA);
 
   @override
   void initState() {
     super.initState();
+
     _checkController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 800),
@@ -65,38 +99,47 @@ class _SeguimientoPedidoPantallaState extends State<SeguimientoPedidoPantalla>
       CurvedAnimation(parent: _progressController, curve: Curves.easeInOut),
     );
 
+    // ✅ TAREA 3: Controlador para el marcador del mapa
+    _markerController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 4),
+    )..repeat(reverse: true);
+    _markerAnimation = Tween<double>(begin: 0.1, end: 0.75).animate(
+      CurvedAnimation(parent: _markerController, curve: Curves.easeInOut),
+    );
+
+    _escucharPedido();
     _iniciarFlujo();
   }
 
   Widget _buildBotonDeshacerConProgreso() {
     return StreamBuilder<int>(
-      // Creamos un stream que emite valores de 0 a 100 en 3 segundos
-      stream: Stream.periodic(const Duration(milliseconds: 30), (x) => x).take(101),
+      stream: Stream.periodic(
+        const Duration(milliseconds: 30),
+        (x) => x,
+      ).take(101),
       builder: (context, snapshot) {
         double progreso = (snapshot.data ?? 0) / 100.0;
-        
         return GestureDetector(
           onTap: () => Navigator.pop(context),
           child: Container(
             width: double.infinity,
             height: 60,
             decoration: BoxDecoration(
-              color: const Color(0xFFF1F1F1), // Fondo gris suave
+              color: const Color(0xFFF1F1F1),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Stack(
               children: [
-                // La barra turquesa que se llena
                 FractionallySizedBox(
                   widthFactor: progreso,
                   child: Container(
                     decoration: BoxDecoration(
-                      color: _verde, // Turquesa clarito
+                      color: _verde,
                       borderRadius: BorderRadius.circular(20),
                     ),
                   ),
                 ),
-                // El texto siempre arriba
                 Center(
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -111,10 +154,12 @@ class _SeguimientoPedidoPantallaState extends State<SeguimientoPedidoPantalla>
                         ),
                       ),
                       const SizedBox(width: 10),
-                      // Opcional: un pequeño contador de segundos
                       Text(
                         "${(3 - (progreso * 3)).toInt()}s",
-                        style: const TextStyle(color: _verde, fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                          color: _verde,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ],
                   ),
@@ -128,40 +173,89 @@ class _SeguimientoPedidoPantallaState extends State<SeguimientoPedidoPantalla>
   }
 
   void _iniciarFlujo() {
-    _timer = Timer(const Duration(seconds: 3), () {
-      if (!mounted) return;
-      setState(() => _fase = 1);
-      _checkController.forward();
-
-      // A los 3 segundos de mostrar el "Check", saltamos al seguimiento vivo
-      _timer = Timer(const Duration(seconds: 3), () async {
+    // Secuencia controlada: cada fase dura al menos 3s.
+    _timer = Timer(const Duration(seconds: 0), () async {
+      try {
+        // 1) Espera 3s en 'Pendiente' antes de pasar a 'Preparando'
+        await Future.delayed(const Duration(seconds: 3));
         if (!mounted) return;
-        setState(() => _fase = 2);
-
-        // --- ESTO ES LO NUEVO: SIMULACIÓN ACTIVA ---
-        _escucharPedido(); // Empezamos a escuchar
-
-        // Forzamos el primer cambio a "Preparando"
-        await FirebaseFirestore.instance
-            .collection('pedidos')
-            .doc(widget.pedidoId)
-            .update({'estado': 'Preparando'});
-
-        // A los 7 segundos, lo mandamos a la calle con un repartidor
-        Future.delayed(const Duration(seconds: 7), () async {
+        // Aplicar cambio localmente primero (optimista) para evitar que
+        // fallos remotos o latencia bloqueen la UI.
+        _ultimaTransicionLocal = DateTime.now();
+        setState(() {
+          _fase = 1;
+          _stepActual = 1;
+          _pedidoData = (_pedidoData ?? {})..['estado'] = 'Preparando';
+        });
+        // Intentar actualizar en Firestore (no bloqueamos la UI si falla)
+        try {
           await FirebaseFirestore.instance
               .collection('pedidos')
               .doc(widget.pedidoId)
-              .update({
-                'estado': 'En camino',
-                'repartidorId':
-                    'REP123', // Pon un ID que exista o este de prueba
-              });
+              .update({'estado': 'Preparando'});
+        } catch (e) {
+          debugPrint('Warning: no se pudo escribir estado Preparando: $e');
+        }
+        _checkController.forward();
+
+        // 2) Esperar al menos 3s en 'Preparando' antes de asignar repartidor y 'En Camino'
+        await Future.delayed(const Duration(seconds: 3));
+        if (!mounted) return;
+        final repartidoresSnap = await FirebaseFirestore.instance
+            .collection('repartidores')
+            .limit(1)
+            .get();
+
+        final updateData = {'estado': 'En Camino'};
+        String? asignadoId;
+        if (repartidoresSnap.docs.isNotEmpty) {
+          asignadoId = repartidoresSnap.docs.first.id;
+          updateData['repartidorId'] = asignadoId;
+        }
+
+        // Cambio optimista local
+        _ultimaTransicionLocal = DateTime.now();
+        setState(() {
+          _fase = 2;
+          _stepActual = 2;
+          _pedidoData = (_pedidoData ?? {})..['estado'] = 'En Camino';
+          if (asignadoId != null) _pedidoData!['repartidorId'] = asignadoId;
         });
-      });
+        try {
+          await FirebaseFirestore.instance
+              .collection('pedidos')
+              .doc(widget.pedidoId)
+              .update(updateData);
+        } catch (e) {
+          debugPrint(
+            'Warning: no se pudo asignar repartidor/estado En Camino: $e',
+          );
+        }
+
+        // 3) Esperar al menos 3s en 'En Camino' antes de marcar 'Entregado'
+        await Future.delayed(const Duration(seconds: 3));
+        if (!mounted) return;
+        _ultimaTransicionLocal = DateTime.now();
+        setState(() {
+          _fase = 3;
+          _stepActual = 3;
+          _pedidoData = (_pedidoData ?? {})..['estado'] = 'Entregado';
+        });
+        try {
+          await FirebaseFirestore.instance
+              .collection('pedidos')
+              .doc(widget.pedidoId)
+              .update({'estado': 'Entregado'});
+        } catch (e) {
+          debugPrint('Warning: no se pudo escribir estado Entregado: $e');
+        }
+      } catch (e) {
+        debugPrint('Error en flujo de seguimiento: $e');
+      }
     });
   }
 
+  // ✅ TAREA 1 + TAREA 2: Escucha pedido Y carga datos completos del repartidor
   void _escucharPedido() {
     _pedidoSub = FirebaseFirestore.instance
         .collection('pedidos')
@@ -174,37 +268,21 @@ class _SeguimientoPedidoPantallaState extends State<SeguimientoPedidoPantalla>
           final estado = data['estado'] as String? ?? 'Pendiente';
           final repartidorId = data['repartidorId'] as String?;
 
-          // 1. ASIGNACIÓN AUTOMÁTICA (Si no hay repartidor)
-          if (repartidorId == null) {
-            final repartidoresSnap = await FirebaseFirestore.instance
-                .collection('repartidores')
-                .limit(1)
-                .get();
+          // ✅ TAREA 2: Actualizar step y barra de progreso según el estado
+          final nuevoStep = _estadoAStep(estado);
+          final nuevoProg = _estadoAProgreso(estado);
 
-            if (repartidoresSnap.docs.isNotEmpty) {
-              String idEncontrado = repartidoresSnap.docs.first.id;
-              await FirebaseFirestore.instance
-                  .collection('pedidos')
-                  .doc(widget.pedidoId)
-                  .update({
-                    'repartidorId': idEncontrado,
-                    'estado': 'En camino', // Lo ponemos en camino al asignar
-                  });
-
-              // --- SIMULACIÓN DE FINALIZACIÓN ---
-              // Esperamos 10 segundos y lo marcamos como Entregado para ver la pantalla final
-              Future.delayed(const Duration(seconds: 10), () {
-                FirebaseFirestore.instance
-                    .collection('pedidos')
-                    .doc(widget.pedidoId)
-                    .update({'estado': 'Entregado'});
-              });
+          // Si el cambio remoto avanza fases demasiado rápido, ignóralo
+          if (_ultimaTransicionLocal != null) {
+            final diff = DateTime.now()
+                .difference(_ultimaTransicionLocal!)
+                .inMilliseconds;
+            if (nuevoStep > _stepActual && diff < 3000) {
+              // Ignorar actualización por estar dentro del mínimo de 3s
               return;
             }
           }
 
-          // 2. ACTUALIZACIÓN DE INTERFAZ
-          final nuevoProg = _estadoAProgreso(estado);
           _progressAnimation =
               Tween<double>(
                 begin: _progressAnimation.value,
@@ -215,29 +293,53 @@ class _SeguimientoPedidoPantallaState extends State<SeguimientoPedidoPantalla>
                   curve: Curves.easeInOut,
                 ),
               );
+          _progressController
+            ..reset()
+            ..forward();
 
-          _progressController.reset();
-          _progressController.forward();
-
+          // ✅ TAREA 1: Cargar datos completos del repartidor (nombre, vehículo, ETA)
           if (repartidorId != null) {
             final repSnap = await FirebaseFirestore.instance
                 .collection('repartidores')
                 .doc(repartidorId)
                 .get();
+
             if (repSnap.exists && mounted) {
+              final repData = repSnap.data()!;
               setState(() {
-                _repartidorData = repSnap.data();
+                _repartidorData = repData;
+                _repartidorVehiculo = repData['vehiculo'] as String?;
+                _repartidorEta = repData['eta'] as String?;
+                if (repData['fotoUrl'] != null) {
+                  _repartidorData!['fotoUrl'] = repData['fotoUrl'];
+                }
               });
             }
+          }
+
+          int faseActual;
+          switch (estado.toLowerCase()) {
+            case 'preparando':
+              faseActual = 1;
+              if (_checkController.status != AnimationStatus.completed) {
+                _checkController.forward();
+              }
+              break;
+            case 'en camino':
+              faseActual = 2;
+              break;
+            case 'entregado':
+              faseActual = 3;
+              break;
+            default:
+              faseActual = 0;
           }
 
           if (mounted) {
             setState(() {
               _pedidoData = data;
-              // IMPORTANTE: Aquí es donde cambia a la pantalla de Carlos Mendoza
-              if (estado == 'Entregado') {
-                _fase = 3;
-              }
+              _stepActual = nuevoStep;
+              _fase = faseActual;
             });
           }
         });
@@ -249,6 +351,7 @@ class _SeguimientoPedidoPantallaState extends State<SeguimientoPedidoPantalla>
     _pedidoSub?.cancel();
     _checkController.dispose();
     _progressController.dispose();
+    _markerController.dispose(); // ✅ TAREA 3
     super.dispose();
   }
 
@@ -268,7 +371,7 @@ class _SeguimientoPedidoPantallaState extends State<SeguimientoPedidoPantalla>
     }
   }
 
-  // ── FASE 0: DISEÑO "CREANDO" ───────────────────────────────────────────────
+  // ── FASE 0 ─────────────────────────────────────────────────────────────────
   Widget _buildCreandoPedido() {
     return Scaffold(
       backgroundColor: Colors.white,
@@ -326,7 +429,7 @@ class _SeguimientoPedidoPantallaState extends State<SeguimientoPedidoPantalla>
     );
   }
 
-  // ── FASE 1: DISEÑO "ÉXITO" ─────────────────────────────────────────────────
+  // ── FASE 1 ─────────────────────────────────────────────────────────────────
   Widget _buildPedidoCreado() {
     return Scaffold(
       backgroundColor: const Color(0xFFE8FAF7),
@@ -355,19 +458,19 @@ class _SeguimientoPedidoPantallaState extends State<SeguimientoPedidoPantalla>
     );
   }
 
-  // ── FASE 2: DISEÑO "EN CURSO" (FIGMA REAL) ──────────────────────────────────
+  // ── FASE 2: EN CURSO ───────────────────────────────────────────────────────
   Widget _buildEnCurso() {
     final estado = _pedidoData?['estado'] ?? 'Alistando';
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.all(25),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _buildCloseButton(),
-              const SizedBox(height: 30),
+              const SizedBox(height: 20),
               Text(
                 estado.toString().toUpperCase(),
                 style: const TextStyle(
@@ -385,22 +488,32 @@ class _SeguimientoPedidoPantallaState extends State<SeguimientoPedidoPantalla>
                   letterSpacing: 1,
                 ),
               ),
-              const SizedBox(height: 40),
-              _buildBarraProgresoFigma(estado),
-              const SizedBox(height: 40),
+              const SizedBox(height: 30),
+
+              // ✅ TAREA 2: Stepper que avanza con el estado de Firebase
+              _buildStepperProgreso(estado),
+
+              const SizedBox(height: 30),
+
+              // ✅ TAREA 3: Mapa simulado
+              _buildMapaSimulado(),
+
+              const SizedBox(height: 20),
               _buildCardInfo(
                 Icons.location_on,
                 "YO RECIBO EN",
                 _pedidoData?['direccionEntrega'] ?? "Dirección",
               ),
-              const SizedBox(height: 15),
+              const SizedBox(height: 12),
               _buildCardInfo(
                 Icons.receipt,
                 "RESUMEN DEL PEDIDO",
                 "PRODUCTOS - \$${_pedidoData?['total'] ?? '0.00'}",
               ),
-              const Spacer(),
-              if (_repartidorData != null) _buildRepartidorFigma(),
+              const SizedBox(height: 20),
+
+              // ✅ TAREA 1: Tarjeta del repartidor con nombre, vehículo y ETA
+              if (_repartidorData != null) _buildRepartidorCard(),
             ],
           ),
         ),
@@ -408,24 +521,88 @@ class _SeguimientoPedidoPantallaState extends State<SeguimientoPedidoPantalla>
     );
   }
 
-  // ── ELEMENTOS DE DISEÑO UI ─────────────────────────────────────────────────
+  // ✅ TAREA 2: Stepper visual con 4 pasos que avanza automáticamente
+  Widget _buildStepperProgreso(String estado) {
+    final pasos = [
+      {'label': 'RECIBIDO', 'icon': Icons.inventory_2},
+      {'label': 'PREPARANDO', 'icon': Icons.restaurant},
+      {'label': 'EN CAMINO', 'icon': Icons.directions_bike},
+      {'label': 'ENTREGADO', 'icon': Icons.check_circle},
+    ];
 
-  Widget _buildBarraProgresoFigma(String estado) {
     return Column(
       children: [
         Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            _stepIcon(Icons.inventory_2, true),
-            _stepIcon(Icons.restaurant, estado != 'Alistando'),
-            _stepIcon(
-              Icons.directions_bike,
-              estado == 'En camino' || estado == 'Entregado',
-            ),
-            _stepIcon(Icons.check_circle, estado == 'Entregado'),
-          ],
+          children: pasos.asMap().entries.map((entry) {
+            final idx = entry.key;
+            final paso = entry.value;
+            final activo = idx <= _stepActual;
+            final esCurrent = idx == _stepActual;
+
+            return Expanded(
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      children: [
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 400),
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: activo
+                                ? (esCurrent
+                                      ? _verde
+                                      : _verde.withValues(alpha: 0.3))
+                                : _fondoClaro,
+                            shape: BoxShape.circle,
+                            boxShadow: esCurrent
+                                ? [
+                                    BoxShadow(
+                                      color: _verde.withValues(alpha: 0.4),
+                                      blurRadius: 8,
+                                      spreadRadius: 2,
+                                    ),
+                                  ]
+                                : [],
+                          ),
+                          child: Icon(
+                            paso['icon'] as IconData,
+                            color: activo ? Colors.white : Colors.grey[400],
+                            size: 20,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          paso['label'] as String,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 8,
+                            fontWeight: FontWeight.w900,
+                            color: activo ? _verde : Colors.grey[400],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Línea conectora (excepto el último)
+                  if (idx < pasos.length - 1)
+                    Expanded(
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 600),
+                        height: 3,
+                        decoration: BoxDecoration(
+                          color: idx < _stepActual ? _verde : Colors.grey[200],
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            );
+          }).toList(),
         ),
-        const SizedBox(height: 15),
+        const SizedBox(height: 16),
+        // Barra de progreso animada
         ClipRRect(
           borderRadius: BorderRadius.circular(10),
           child: AnimatedBuilder(
@@ -434,7 +611,19 @@ class _SeguimientoPedidoPantallaState extends State<SeguimientoPedidoPantalla>
               value: _progressAnimation.value,
               backgroundColor: _fondoClaro,
               color: _verde,
-              minHeight: 8,
+              minHeight: 6,
+            ),
+          ),
+        ),
+        const SizedBox(height: 6),
+        Align(
+          alignment: Alignment.centerRight,
+          child: Text(
+            '${(_estadoAProgreso(_pedidoData?['estado']) * 100).toInt()}%',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w900,
+              color: _verde,
             ),
           ),
         ),
@@ -442,28 +631,262 @@ class _SeguimientoPedidoPantallaState extends State<SeguimientoPedidoPantalla>
     );
   }
 
-  Widget _stepIcon(IconData icon, bool active) {
+  // ✅ TAREA 3: Mapa simulado profesional con ruta y marcador animado
+  Widget _buildMapaSimulado() {
     return Container(
-      padding: const EdgeInsets.all(10),
+      height: 200,
       decoration: BoxDecoration(
-        color: active ? const Color(0xFFE0F7F4) : _fondoClaro,
-        shape: BoxShape.circle,
+        borderRadius: BorderRadius.circular(24),
+        color: const Color(0xFFE8F5E9),
+        border: Border.all(color: Colors.grey.shade200),
       ),
-      child: Icon(icon, color: active ? _verde : Colors.grey[400], size: 20),
+      clipBehavior: Clip.hardEdge,
+      child: Stack(
+        children: [
+          // Fondo tipo mapa con cuadrícula
+          CustomPaint(
+            size: const Size(double.infinity, 200),
+            painter: _MapaGridPainter(),
+          ),
+          // Ruta animada
+          CustomPaint(
+            size: const Size(double.infinity, 200),
+            painter: _RutaPainter(color: _verde),
+          ),
+          // Marcador de destino (fijo)
+          const Positioned(
+            right: 40,
+            top: 40,
+            child: Column(
+              children: [
+                Icon(Icons.location_on, color: Colors.red, size: 30),
+                Text(
+                  'DESTINO',
+                  style: TextStyle(
+                    fontSize: 8,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.red,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Marcador del repartidor (animado)
+          AnimatedBuilder(
+            animation: _markerAnimation,
+            builder: (context, child) {
+              return Positioned(
+                left:
+                    MediaQuery.of(context).size.width * 0.08 +
+                    (_markerAnimation.value *
+                        (MediaQuery.of(context).size.width * 0.5)),
+                top: 90 + math.sin(_markerAnimation.value * math.pi) * -40,
+                child: Column(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: _verde,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: _verde.withValues(alpha: 0.4),
+                            blurRadius: 8,
+                            spreadRadius: 2,
+                          ),
+                        ],
+                      ),
+                      child: const Icon(
+                        Icons.delivery_dining,
+                        color: Colors.white,
+                        size: 18,
+                      ),
+                    ),
+                    Container(width: 2, height: 6, color: _verde),
+                  ],
+                ),
+              );
+            },
+          ),
+          // ETA badge
+          Positioned(
+            bottom: 12,
+            left: 12,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: const [
+                  BoxShadow(color: Colors.black12, blurRadius: 6),
+                ],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.access_time, size: 14, color: _verde),
+                  const SizedBox(width: 4),
+                  Text(
+                    // ✅ TAREA 1: Muestra ETA real si existe
+                    _repartidorEta ?? '15-20 min',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w900,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          // Label "MAPA EN VIVO"
+          Positioned(
+            top: 12,
+            right: 12,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: _verde,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.circle, color: Colors.white, size: 6),
+                  SizedBox(width: 4),
+                  Text(
+                    'EN VIVO',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 9,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ✅ TAREA 1: Tarjeta del repartidor con nombre, vehículo y ETA reales
+  Widget _buildRepartidorCard() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: _fondoClaro,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.grey.shade100),
+      ),
+      child: Row(
+        children: [
+          // Avatar con manejo de error en imagen
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(shape: BoxShape.circle),
+            child: ClipOval(
+              child:
+                  _repartidorData?['fotoUrl'] != null &&
+                      (_repartidorData!['fotoUrl'] as String).isNotEmpty
+                  ? Image.network(
+                      _repartidorData!['fotoUrl'] as String,
+                      width: 56,
+                      height: 56,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Container(
+                        color: _verde,
+                        child: const Icon(
+                          Icons.person,
+                          color: Colors.white,
+                          size: 28,
+                        ),
+                      ),
+                    )
+                  : Container(
+                      color: _verde,
+                      child: const Icon(
+                        Icons.person,
+                        color: Colors.white,
+                        size: 28,
+                      ),
+                    ),
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Nombre del repartidor
+                Text(
+                  (_repartidorData?['nombre'] ?? 'REPARTIDOR')
+                      .toString()
+                      .toUpperCase(),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w900,
+                    fontSize: 15,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                // ✅ TAREA 1: Vehículo real desde Firestore
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.directions_bike,
+                      size: 13,
+                      color: Colors.grey,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      _repartidorVehiculo ?? 'Vehículo',
+                      style: const TextStyle(
+                        color: Colors.grey,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 2),
+                // ✅ TAREA 1: ETA real desde Firestore
+                Row(
+                  children: [
+                    const Icon(Icons.access_time, size: 13, color: Colors.grey),
+                    const SizedBox(width: 4),
+                    Text(
+                      'ETA: ${_repartidorEta ?? 'Calculando...'}',
+                      style: TextStyle(
+                        color: _verde,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          _actionIcon(Icons.chat_bubble),
+          const SizedBox(width: 8),
+          _actionIcon(Icons.phone),
+        ],
+      ),
     );
   }
 
   Widget _buildCardInfo(IconData icon, String title, String value) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: _fondoClaro,
-        borderRadius: BorderRadius.circular(25),
+        borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
         children: [
           Icon(icon, color: Colors.grey[400]),
-          const SizedBox(width: 15),
+          const SizedBox(width: 14),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -489,80 +912,11 @@ class _SeguimientoPedidoPantallaState extends State<SeguimientoPedidoPantalla>
     );
   }
 
-  Widget _buildRepartidorFigma() {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 20),
-      decoration: const BoxDecoration(
-        border: Border(top: BorderSide(color: Color(0xFFEEEEEE))),
-      ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            radius: 25,
-            backgroundColor: _verde,
-            child: const Icon(Icons.person, color: Colors.white),
-          ),
-          const SizedBox(width: 15),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  _repartidorData?['nombre'] ?? 'REPARTIDOR',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w900,
-                    fontSize: 16,
-                  ),
-                ),
-                const Text(
-                  '4.9 ★  •  Repartidor Pro',
-                  style: TextStyle(
-                    color: Colors.grey,
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          _actionIcon(Icons.chat_bubble),
-          const SizedBox(width: 10),
-          _actionIcon(Icons.phone),
-        ],
-      ),
-    );
-  }
-
   Widget _actionIcon(IconData icon) {
     return Container(
       padding: const EdgeInsets.all(10),
       decoration: const BoxDecoration(color: _verde, shape: BoxShape.circle),
-      child: Icon(icon, color: Colors.white, size: 18),
-    );
-  }
-
-  Widget _buildButton(String text, Color color, VoidCallback onTap) {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton(
-        onPressed: onTap,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: color,
-          padding: const EdgeInsets.symmetric(vertical: 20),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          elevation: 0,
-        ),
-        child: Text(
-          text,
-          style: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w900,
-            fontSize: 16,
-          ),
-        ),
-      ),
+      child: Icon(icon, color: Colors.white, size: 16),
     );
   }
 
@@ -577,7 +931,7 @@ class _SeguimientoPedidoPantallaState extends State<SeguimientoPedidoPantalla>
 
   Widget _buildSimpleRow(IconData icon, String title, String subtitle) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 15),
+      padding: const EdgeInsets.symmetric(vertical: 14),
       child: Row(
         children: [
           Icon(icon, color: Colors.grey),
@@ -609,7 +963,7 @@ class _SeguimientoPedidoPantallaState extends State<SeguimientoPedidoPantalla>
 
   Widget _buildDivider() => const Divider(color: Color(0xFFF1F1F1));
 
-  // Placeholder para Fase 3 (Entregado) similar a la Fase 2 pero con el botón CERRAR grande al final.
+  // ── FASE 3: ENTREGADO ──────────────────────────────────────────────────────
   Widget _buildEntregado() {
     return Scaffold(
       backgroundColor: Colors.white,
@@ -623,7 +977,7 @@ class _SeguimientoPedidoPantallaState extends State<SeguimientoPedidoPantalla>
         title: const Text(
           "PEDIDO ENTREGADO",
           style: TextStyle(
-            color: Color(0xFF00C5AB),
+            color: _verde,
             fontWeight: FontWeight.bold,
             fontSize: 14,
           ),
@@ -632,16 +986,41 @@ class _SeguimientoPedidoPantallaState extends State<SeguimientoPedidoPantalla>
       ),
       body: Column(
         children: [
-          // INFO DEL REPARTIDOR (CARLOS MENDOZA)
           Padding(
             padding: const EdgeInsets.all(20),
             child: Row(
               children: [
-                CircleAvatar(
-                  radius: 35,
-                  backgroundImage: NetworkImage(
-                    _repartidorData?['foto'] ??
-                        'https://via.placeholder.com/150',
+                // Avatar final con fallback al icono si la URL falla
+                Container(
+                  width: 70,
+                  height: 70,
+                  decoration: const BoxDecoration(shape: BoxShape.circle),
+                  child: ClipOval(
+                    child:
+                        _repartidorData?['fotoUrl'] != null &&
+                            (_repartidorData!['fotoUrl'] as String).isNotEmpty
+                        ? Image.network(
+                            _repartidorData!['fotoUrl'] as String,
+                            width: 70,
+                            height: 70,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Container(
+                              color: _verde,
+                              child: const Icon(
+                                Icons.person,
+                                color: Colors.white,
+                                size: 30,
+                              ),
+                            ),
+                          )
+                        : Container(
+                            color: _verde,
+                            child: const Icon(
+                              Icons.person,
+                              color: Colors.white,
+                              size: 30,
+                            ),
+                          ),
                   ),
                 ),
                 const SizedBox(width: 15),
@@ -655,37 +1034,27 @@ class _SeguimientoPedidoPantallaState extends State<SeguimientoPedidoPantalla>
                         fontSize: 20,
                       ),
                     ),
-                    Row(
-                      children: [
-                        const Icon(Icons.star, color: Colors.amber, size: 16),
-                        Text(
-                          " 4.9  •  ${_repartidorData?['pedidosTotales'] ?? '1,240'} PEDIDOS",
-                          style: const TextStyle(
+                    // ✅ TAREA 1: Vehículo en pantalla final
+                    if (_repartidorVehiculo != null)
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.directions_bike,
+                            size: 14,
                             color: Colors.grey,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
                           ),
-                        ),
-                      ],
-                    ),
+                          const SizedBox(width: 4),
+                          Text(
+                            _repartidorVehiculo!,
+                            style: const TextStyle(
+                              color: Colors.grey,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
                   ],
-                ),
-              ],
-            ),
-          ),
-
-          // TOTAL
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 20),
-            child: Row(
-              children: [
-                Text(
-                  "TOTAL",
-                  style: TextStyle(
-                    color: Colors.grey,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 12,
-                  ),
                 ),
               ],
             ),
@@ -695,21 +1064,26 @@ class _SeguimientoPedidoPantallaState extends State<SeguimientoPedidoPantalla>
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
+                const Text(
+                  "TOTAL",
+                  style: TextStyle(
+                    color: Colors.grey,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
+                ),
                 Text(
-                  "Productos - \$${_pedidoData?['total'] ?? '0.00'}",
+                  "\$${_pedidoData?['total'] ?? '0.00'}",
                   style: const TextStyle(
                     fontWeight: FontWeight.w900,
                     fontSize: 28,
+                    color: _verde,
                   ),
                 ),
-                const Icon(Icons.keyboard_arrow_down),
               ],
             ),
           ),
-
-          const SizedBox(height: 30),
-
-          // CRONOLOGÍA (LA LISTA DE PUNTOS)
+          const SizedBox(height: 20),
           Expanded(
             child: Container(
               margin: const EdgeInsets.symmetric(horizontal: 20),
@@ -753,14 +1127,29 @@ class _SeguimientoPedidoPantallaState extends State<SeguimientoPedidoPantalla>
               ),
             ),
           ),
-
-          // BOTÓN CERRAR
           Padding(
             padding: const EdgeInsets.all(20),
-            child: _buildButton(
-              "CERRAR",
-              const Color(0xFF00C5AB),
-              () => Navigator.pop(context),
+            child: SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => Navigator.pop(context),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _verde,
+                  padding: const EdgeInsets.symmetric(vertical: 20),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  elevation: 0,
+                ),
+                child: const Text(
+                  "CERRAR",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
             ),
           ),
         ],
@@ -780,7 +1169,7 @@ class _SeguimientoPedidoPantallaState extends State<SeguimientoPedidoPantalla>
           children: [
             Icon(
               completado ? Icons.check_circle : Icons.radio_button_unchecked,
-              color: const Color(0xFF00C5AB),
+              color: _verde,
               size: 20,
             ),
             if (!isLast)
@@ -804,4 +1193,85 @@ class _SeguimientoPedidoPantallaState extends State<SeguimientoPedidoPantalla>
       ],
     );
   }
+}
+
+// ✅ TAREA 3: Painter para la cuadrícula del mapa simulado
+class _MapaGridPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = const Color(0xFFCFE8CF)
+      ..strokeWidth = 1;
+
+    // Líneas horizontales
+    for (double y = 0; y < size.height; y += 30) {
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
+    }
+    // Líneas verticales
+    for (double x = 0; x < size.width; x += 30) {
+      canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
+    }
+
+    // Simular bloques de "manzanas"
+    final blockPaint = Paint()
+      ..color = const Color(0xFFB8D8B8).withValues(alpha: 0.5);
+    final blocks = [
+      const Rect.fromLTWH(30, 30, 60, 50),
+      const Rect.fromLTWH(120, 60, 80, 40),
+      const Rect.fromLTWH(220, 20, 50, 70),
+      const Rect.fromLTWH(30, 120, 70, 40),
+      const Rect.fromLTWH(150, 120, 60, 50),
+    ];
+    for (final b in blocks) {
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(b, const Radius.circular(4)),
+        blockPaint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+// ✅ TAREA 3: Painter para la ruta del repartidor
+class _RutaPainter extends CustomPainter {
+  final Color color;
+  _RutaPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 3
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+
+    final path = Path()
+      ..moveTo(size.width * 0.08, size.height * 0.65)
+      ..lineTo(size.width * 0.25, size.height * 0.65)
+      ..lineTo(size.width * 0.25, size.height * 0.35)
+      ..lineTo(size.width * 0.55, size.height * 0.35)
+      ..lineTo(size.width * 0.55, size.height * 0.25)
+      ..lineTo(size.width * 0.78, size.height * 0.25);
+
+    canvas.drawPath(path, paint);
+
+    // Puntos en los giros
+    final dotPaint = Paint()
+      ..color = color.withValues(alpha: 0.5)
+      ..style = PaintingStyle.fill;
+    for (final offset in [
+      Offset(size.width * 0.25, size.height * 0.65),
+      Offset(size.width * 0.25, size.height * 0.35),
+      Offset(size.width * 0.55, size.height * 0.35),
+      Offset(size.width * 0.55, size.height * 0.25),
+    ]) {
+      canvas.drawCircle(offset, 4, dotPaint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

@@ -7,11 +7,13 @@ class Usuario {
   final String telefono;
   final String rol; // 'cliente' | 'repartidor' | 'administrador'
   final List<String> direcciones;
+  final String? fotoUrl;
   final DateTime? fechaCreacion;
 
   Usuario({
     required this.uid,
     required this.email,
+    this.fotoUrl,
     required this.nombre,
     required this.telefono,
     required this.rol,
@@ -28,6 +30,7 @@ class Usuario {
       telefono: data['telefono'] ?? '',
       rol: data['rol'] ?? 'cliente',
       direcciones: List<String>.from(data['direcciones'] ?? []),
+      fotoUrl: data['fotoUrl'] as String?,
       fechaCreacion: (data['fechaCreacion'] as Timestamp?)?.toDate(),
     );
   }
@@ -39,6 +42,7 @@ class Usuario {
       'telefono': telefono,
       'rol': rol,
       'direcciones': direcciones,
+      'fotoUrl': fotoUrl,
       'fechaCreacion': fechaCreacion ?? FieldValue.serverTimestamp(),
     };
   }

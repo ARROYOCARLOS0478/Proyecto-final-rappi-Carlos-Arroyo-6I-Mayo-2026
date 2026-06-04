@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
-import '../../core/tema_app.dart';
+import '../../modelos/comercio_modelo.dart';
 import '../../proveedores/carrito_proveedor.dart';
 import '../../proveedores/autenticacion_proveedor.dart';
+import '../../servicios/firestore_servicio.dart';
 import '../checkout/checkout_pantalla.dart';
 
 class CarritoPantalla extends StatelessWidget {
@@ -36,13 +37,23 @@ class CarritoPantalla extends StatelessWidget {
                 fontSize: 18,
               ),
             ),
-            Text(
-              'LITTLE CAESARS', // Esto podría venir dinámico del carrito
-              style: TextStyle(
-                color: const Color(0xFF00C5AB),
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-              ),
+            FutureBuilder(
+              future: carrito.comercioIdActivo != null
+                  ? FirestoreServicio().obtenerComercio(
+                      carrito.comercioIdActivo!,
+                    )
+                  : Future.value(null),
+              builder: (context, snap) {
+                final comercio = snap.data as Comercio?;
+                return Text(
+                  comercio?.nombre ?? 'NEGOCIO',
+                  style: TextStyle(
+                    color: const Color(0xFF00C5AB),
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                );
+              },
             ),
           ],
         ),
@@ -64,163 +75,204 @@ class _CarritoConItems extends StatelessWidget {
   Widget build(BuildContext context) {
     // Calculamos el total (En tu Imagen 2 solo se muestra el Total a Pagar abajo)
     final double total = carrito.precioTotal;
+    final String? comercioId = carrito.comercioIdActivo;
 
-    return Column(
-      children: [
-        Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-            itemCount: carrito.items.length,
-            itemBuilder: (ctx, i) {
-              final entry = carrito.items.entries.elementAt(i);
-              final productoId = entry.key;
-              final item = entry.value;
+    return FutureBuilder<Comercio?>(
+      future: comercioId != null
+          ? FirestoreServicio().obtenerComercio(comercioId)
+          : Future.value(null),
+      builder: (context, snapshot) {
+        final comercio = snapshot.data;
+        final int descuento = comercio?.descuentoNegocio ?? 0;
+        final double totalConDescuento = total * (1 - descuento / 100);
+        final bool tieneDescuento = descuento > 0;
 
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 20),
-                child: Row(
-                  children: [
-                    // Imagen redondeada como Figma
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(15),
-                      child: CachedNetworkImage(
-                        imageUrl: item['imagenUrl'] as String? ?? '',
-                        width: 80,
-                        height: 80,
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                    const SizedBox(width: 15),
-                    // Info del producto
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            (item['nombre'] as String).toUpperCase(),
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w900,
-                              fontSize: 14,
-                            ),
-                          ),
-                          Text(
-                            '\$${(item['precio'] as double).toStringAsFixed(2)}',
-                            style: const TextStyle(
-                              color: Color(0xFFFF4D00),
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    // Controles Estilo Figma (Píldora Gris)
-                    Container(
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF2F4F7),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Row(
-                        children: [
-                          IconButton(
-                            icon: const Icon(
-                              Icons.delete_outline,
-                              color: Color(0xFFFF4D00),
-                              size: 20,
-                            ),
-                            onPressed: () =>
-                                carrito.removerProducto(productoId),
-                          ),
-                          Text(
-                            '${item['cantidad']}',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
-                          ),
-                          IconButton(
-                            icon: const Icon(
-                              Icons.add,
-                              color: Colors.grey,
-                              size: 20,
-                            ),
-                            onPressed: () =>
-                                carrito.incrementarDesdeId(productoId),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+        return Column(
+          children: [
+            Expanded(
+              child: ListView.builder(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 10,
                 ),
-              );
-            },
-          ),
-        ),
-        // Footer con Total y Botón Continuar
-        Container(
-          padding: const EdgeInsets.all(25),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            border: Border(top: BorderSide(color: Color(0xFFF2F4F7))),
-          ),
-          child: Row(
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text(
-                    "TOTAL A PAGAR",
-                    style: TextStyle(
-                      color: Colors.grey,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
+                itemCount: carrito.items.length,
+                itemBuilder: (ctx, i) {
+                  final entry = carrito.items.entries.elementAt(i);
+                  final productoId = entry.key;
+                  final item = entry.value;
+
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 20),
+                    child: Row(
+                      children: [
+                        // Imagen redondeada como Figma
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(15),
+                          child: CachedNetworkImage(
+                            imageUrl: item['imagenUrl'] as String? ?? '',
+                            width: 80,
+                            height: 80,
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                        const SizedBox(width: 15),
+                        // Info del producto
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                (item['nombre'] as String).toUpperCase(),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 14,
+                                ),
+                              ),
+                              Text(
+                                '\$${(item['precio'] as double).toStringAsFixed(2)}',
+                                style: const TextStyle(
+                                  color: Color(0xFFFF4D00),
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        // Controles Estilo Figma (Píldora Gris)
+                        Container(
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF2F4F7),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Row(
+                            children: [
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.delete_outline,
+                                  color: Color(0xFFFF4D00),
+                                  size: 20,
+                                ),
+                                onPressed: () =>
+                                    carrito.removerProducto(productoId),
+                              ),
+                              Text(
+                                '${item['cantidad']}',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.add,
+                                  color: Colors.grey,
+                                  size: 20,
+                                ),
+                                onPressed: () =>
+                                    carrito.incrementarDesdeId(productoId),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
+                  );
+                },
+              ),
+            ),
+            // Footer con Total y Botón Continuar
+            Container(
+              padding: const EdgeInsets.all(25),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                border: Border(top: BorderSide(color: Color(0xFFF2F4F7))),
+              ),
+              child: Row(
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        "TOTAL A PAGAR",
+                        style: TextStyle(
+                          color: Colors.grey,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                      ),
+                      if (tieneDescuento) ...[
+                        Text(
+                          "\$${total.toStringAsFixed(2)}",
+                          style: const TextStyle(
+                            decoration: TextDecoration.lineThrough,
+                            color: Colors.grey,
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                      ],
+                      Text(
+                        "\$${totalConDescuento.toStringAsFixed(2)}",
+                        style: const TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.w900,
+                          color: Color(0xFF001D3D),
+                        ),
+                      ),
+                      if (tieneDescuento)
+                        Text(
+                          'Descuento del negocio aplicado: -$descuento%',
+                          style: const TextStyle(
+                            color: Color(0xFF00C5AB),
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                    ],
                   ),
-                  Text(
-                    "\$${total.toStringAsFixed(2)}",
-                    style: const TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.w900,
-                      color: Color(0xFF001D3D),
+                  const SizedBox(width: 20),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => CheckoutPantalla(
+                              costoEnvio: 20.0,
+                              total: total,
+                              descuentoNegocio: descuento,
+                            ),
+                          ),
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF00C5AB),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 18),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: const Text(
+                        "CONTINUAR",
+                        style: TextStyle(
+                          fontWeight: FontWeight.w900,
+                          fontSize: 16,
+                        ),
+                      ),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(width: 20),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => CheckoutPantalla(
-                          costoEnvio: 20.0,
-                          total: total + 20.0,
-                        ),
-                      ),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF00C5AB),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 18),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    elevation: 0,
-                  ),
-                  child: const Text(
-                    "CONTINUAR",
-                    style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
+            ),
+          ],
+        );
+      }, // builder
+    ); // FutureBuilder
   }
 }
 

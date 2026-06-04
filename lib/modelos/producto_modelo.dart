@@ -9,6 +9,7 @@ class Producto {
   final int stock;
   final String categoria;
   final String imagenUrl;
+  final int descuento;
 
   Producto({
     this.id,
@@ -19,6 +20,7 @@ class Producto {
     required this.stock,
     required this.categoria,
     required this.imagenUrl,
+    this.descuento = 0, // SIN el 'required' porque ya tiene valor por defecto
   });
 
   factory Producto.fromFirestore(DocumentSnapshot doc) {
@@ -29,9 +31,10 @@ class Producto {
       nombre: data['nombre'] ?? '',
       descripcion: data['descripcion'] ?? '',
       precio: (data['precio'] ?? data['price'] ?? 0.0).toDouble(),
-      stock: data['stock'] ?? 0,
+      stock: (data['stock'] ?? 0).toInt(),
       categoria: data['categoria'] ?? 'General',
       imagenUrl: data['imagenUrl'] ?? '',
+      descuento: (data['descuento'] ?? data['discount'] ?? 0).toInt(),
     );
   }
 
@@ -44,6 +47,7 @@ class Producto {
       'stock': stock,
       'categoria': categoria,
       'imagenUrl': imagenUrl,
+      'descuento': descuento,
     };
   }
 }

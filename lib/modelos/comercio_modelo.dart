@@ -13,6 +13,7 @@ class Comercio {
   final String duenoId;
   final String tiempoEntrega;
   final double costoEnvio;
+  final int descuentoNegocio; // Solo una vez declarada
   final DateTime? fechaRegistro;
 
   Comercio({
@@ -28,6 +29,7 @@ class Comercio {
     this.duenoId = '',
     this.tiempoEntrega = '20-30 min',
     this.costoEnvio = 0.0,
+    this.descuentoNegocio = 0, // Quitamos el duplicado de aquí también
     this.fechaRegistro,
   });
 
@@ -44,8 +46,12 @@ class Comercio {
       imagenUrl: data['imagenUrl'] ?? '',
       estaActivo: data['estaActivo'] ?? data['isActive'] ?? true,
       duenoId: data['duenoId'] ?? data['ownerId'] ?? '',
-      tiempoEntrega: data['tiempoEntrega'] ?? data['deliveryTime'] ?? '20-30 min',
-      costoEnvio: (data['costoEnvio'] ?? data['deliveryCost'] ?? 0.0).toDouble(),
+      tiempoEntrega:
+          data['tiempoEntrega'] ?? data['deliveryTime'] ?? '20-30 min',
+      costoEnvio: (data['costoEnvio'] ?? data['deliveryCost'] ?? 0.0)
+          .toDouble(),
+      descuentoNegocio: (data['descuentoNegocio'] ?? data['discount'] ?? 0)
+          .toInt(),
       fechaRegistro: (data['fechaRegistro'] as Timestamp?)?.toDate(),
     );
   }
@@ -63,6 +69,7 @@ class Comercio {
       'duenoId': duenoId,
       'tiempoEntrega': tiempoEntrega,
       'costoEnvio': costoEnvio,
+      'descuentoNegocio': descuentoNegocio,
       'fechaRegistro': fechaRegistro ?? FieldValue.serverTimestamp(),
     };
   }

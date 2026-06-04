@@ -1,5 +1,7 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../core/constantes.dart';
 import '../../proveedores/carrito_proveedor.dart';
 import '../../proveedores/autenticacion_proveedor.dart';
 import '../../proveedores/pedido_proveedor.dart';
@@ -8,11 +10,13 @@ import '../seguimiento/seguimiento_pedido_pantalla.dart';
 class CheckoutPantalla extends StatefulWidget {
   final double costoEnvio;
   final double total;
+  final int descuentoNegocio;
 
   const CheckoutPantalla({
     super.key,
     required this.costoEnvio,
     required this.total,
+    this.descuentoNegocio = 0,
   });
 
   @override
@@ -41,7 +45,10 @@ class _CheckoutPantallaState extends State<CheckoutPantalla> {
   ];
 
   double get _costoEnvioFinal => _tiposEnvio[_opcionEnvio]['costo'];
-  double get _totalFinal => widget.total + _costoEnvioFinal;
+  double get _subtotalConDescuento =>
+      widget.total * (1 - widget.descuentoNegocio / 100);
+  double get _montoDescuento => widget.total - _subtotalConDescuento;
+  double get _totalFinal => _subtotalConDescuento + _costoEnvioFinal;
 
   Future<void> _confirmarPedido() async {
     setState(() => _procesando = true);
@@ -58,9 +65,18 @@ class _CheckoutPantallaState extends State<CheckoutPantalla> {
         ? auth.usuarioDatos!.direcciones.first
         : 'Sin dirección';
 
+    final comercioId = carrito.items.values.first['comercioId'] as String;
+    final comercioSnap = await FirebaseFirestore.instance
+        .collection(Constantes.coleccionComercios)
+        .doc(comercioId)
+        .get();
+    final comercioNombre =
+        comercioSnap.data()?['nombre'] as String? ?? 'Negocio';
+
     final pedidoId = await pedidoProv.crearPedido(
       usuarioId: authProv.usuarioDatos?.uid ?? "user_temp",
-      comercioId: carrito.items.values.first['comercioId'],
+      comercioId: comercioId,
+      comercioNombre: comercioNombre,
       itemsCarrito: carrito.items,
       total: _totalFinal,
       direccion: direccion,
@@ -259,7 +275,7 @@ class _CheckoutPantallaState extends State<CheckoutPantalla> {
                                 ],
                               ),
                             );
-                          }).toList(),
+                          }),
                           const Divider(height: 1),
                           const SizedBox(height: 10),
                           Row(
@@ -278,6 +294,28 @@ class _CheckoutPantallaState extends State<CheckoutPantalla> {
                               ),
                             ],
                           ),
+                          if (widget.descuentoNegocio > 0) ...[
+                            const SizedBox(height: 4),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'Descuento ${widget.descuentoNegocio}%',
+                                  style: const TextStyle(
+                                    color: Colors.green,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                                Text(
+                                  '-\$${_montoDescuento.toStringAsFixed(2)}',
+                                  style: const TextStyle(
+                                    color: Colors.green,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                           const SizedBox(height: 4),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,

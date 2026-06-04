@@ -16,6 +16,7 @@ class PedidoProveedor with ChangeNotifier {
   Future<String?> crearPedido({
     required String usuarioId,
     required String comercioId,
+    required String comercioNombre,
     required Map<String, Map<String, dynamic>> itemsCarrito,
     required double total,
     required String direccion,
@@ -41,6 +42,7 @@ class PedidoProveedor with ChangeNotifier {
         // ── Campos raíz ────────────────────────────────────────────
         'usuarioId': usuarioId,
         'comercioId': comercioId, // Raíz, no dentro de items
+        'comercioNombre': comercioNombre,
         'repartidorId': null, // Raíz; se actualiza cuando un repartidor acepta
         'estado': 'Pendiente', // Estado inicial requerido
         'metodoPago': metodoPago,
