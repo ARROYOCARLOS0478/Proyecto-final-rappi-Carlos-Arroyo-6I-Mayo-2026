@@ -51,6 +51,7 @@ class AutenticacionProveedor with ChangeNotifier {
           telefono: data['telefono'],
           rol: data['rol'],
           direcciones: List.from(data['direcciones'] ?? []),
+          fotoUrl: data['fotoUrl'],
           fechaCreacion: data['fechaCreacion'] != null
               ? DateTime.parse(data['fechaCreacion'] as String)
               : DateTime.now(),
@@ -171,6 +172,7 @@ class AutenticacionProveedor with ChangeNotifier {
     String password,
     String nombre,
     String telefono, {
+    String? fotoUrl,
     Map<String, dynamic>? direccion,
   }) async {
     _estaCargando = true;
@@ -207,6 +209,7 @@ class AutenticacionProveedor with ChangeNotifier {
           rol: _rolPorEmail(email),
           // ✅ AHORA SÍ: Pasamos una lista de Strings, no de Mapas
           direcciones: direccionTexto != null ? [direccionTexto] : [],
+          fotoUrl: fotoUrl,
           fechaCreacion: DateTime.now(),
         );
 
@@ -248,6 +251,7 @@ class AutenticacionProveedor with ChangeNotifier {
         direcciones: nuevosDatos['direcciones'] != null 
             ? List<String>.from(nuevosDatos['direcciones']) 
             : _usuarioDatos!.direcciones,
+        fotoUrl: nuevosDatos['fotoUrl'] ?? _usuarioDatos!.fotoUrl,
         fechaCreacion: _usuarioDatos!.fechaCreacion,
       );
 
@@ -292,6 +296,7 @@ class AutenticacionProveedor with ChangeNotifier {
         'telefono': _usuarioDatos!.telefono,
         'rol': _usuarioDatos!.rol,
         'direcciones': _usuarioDatos!.direcciones,
+        'fotoUrl': _usuarioDatos!.fotoUrl,
         'fechaCreacion': _usuarioDatos!.fechaCreacion?.toIso8601String(),
       }),
     );

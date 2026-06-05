@@ -236,10 +236,13 @@ class _HomePantallaState extends State<HomePantalla> {
     AutenticacionProveedor authProv,
     CarritoProveedor carritoP,
   ) {
+    final uid = authProv.usuarioDatos?.uid;
     return CustomScrollView(
       physics: const BouncingScrollPhysics(),
       slivers: [
         SliverToBoxAdapter(child: _buildHeader(authProv, carritoP)),
+        if (uid != null)
+          SliverToBoxAdapter(child: _buildBannerSeguimientoPremium(uid)),
         SliverToBoxAdapter(child: _buildBanners()),
         SliverToBoxAdapter(child: _buildCategoriasGrandes()),
         SliverToBoxAdapter(child: _buildCategoriasChicas()),
@@ -375,67 +378,175 @@ class _HomePantallaState extends State<HomePantalla> {
     );
   }
 
-  // 1. Agrega este Widget arriba de tu lista de comercios
-  Widget _buildBannerSeguimiento(String usuarioId) {
+  // 1. Agrega este Widget arriba de tu lista de comercios (Premium Stepper)
+  Widget _buildBannerSeguimientoPremium(String usuarioId) {
     return StreamBuilder<List<Pedido>>(
-      stream: FirestoreServicio().obtenerPedidosActivos(usuarioId),
+      stream: _firestoreServicio.obtenerPedidosActivos(usuarioId),
       builder: (context, snapshot) {
         if (!snapshot.hasData || snapshot.data!.isEmpty) {
           return const SizedBox.shrink();
         }
 
-        final pedido = snapshot.data!.first; // Tomamos el pedido más reciente
+        final pedido = snapshot.data!.first;
+        final estado = pedido.estado;
+
+        int stepActual = 0;
+        String mensajeEstado = "Alistando tu pedido";
+        switch (estado.toLowerCase()) {
+          case 'pendiente':
+            stepActual = 0;
+            mensajeEstado = "Alistando tu pedido";
+            break;
+          case 'preparando':
+            stepActual = 1;
+            mensajeEstado = "Preparando tu pedido";
+            break;
+          case 'en camino':
+            stepActual = 2;
+            mensajeEstado = "Tu pedido va en camino";
+            break;
+          case 'entregado':
+            stepActual = 3;
+            mensajeEstado = "Pedido entregado";
+            break;
+        }
+
+        final pasos = [
+          {'icon': Icons.inventory_2},
+          {'icon': Icons.restaurant},
+          {'icon': Icons.directions_bike},
+          {'icon': Icons.check_circle},
+        ];
 
         return GestureDetector(
-          onTap: () => Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) =>
-                  SeguimientoPedidoPantalla(pedidoId: pedido.id!),
-            ),
-          ),
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) =>
+                    SeguimientoPedidoPantalla(pedidoId: pedido.id!),
+              ),
+            );
+          },
           child: Container(
-            margin: const EdgeInsets.all(15),
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+            margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+            padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: const Color(0xFF00C5AB), // Tu Turquesa
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10)],
-            ),
-            child: Row(
-              children: [
-                const Icon(
-                  Icons.delivery_dining,
-                  color: Colors.white,
-                  size: 30,
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(28),
+              border: Border.all(color: Colors.grey.shade100, width: 1.5),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.shade200,
+                  blurRadius: 16,
+                  offset: const Offset(0, 8),
                 ),
-                const SizedBox(width: 15),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        "TU PEDIDO ESTÁ EN CAMINO",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w900,
-                          fontSize: 12,
-                        ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      "PEDIDO EN CURSO",
+                      style: TextStyle(
+                        color: _verde,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 10,
+                        letterSpacing: 1.2,
                       ),
-                      Text(
-                        "Sigue a tu repartidor en tiempo real",
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.9),
-                          fontSize: 11,
-                        ),
-                      ),
-                    ],
+                    ),
+                    Icon(
+                      Icons.keyboard_arrow_right,
+                      color: Colors.grey[400],
+                      size: 20,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  pedido.comercioNombre.toUpperCase(),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w900,
+                    fontSize: 14,
+                    color: _azulOscuro,
+                    letterSpacing: 0.5,
                   ),
                 ),
-                const Icon(
-                  Icons.arrow_forward_ios,
-                  color: Colors.white,
-                  size: 15,
+                const SizedBox(height: 2),
+                Text(
+                  mensajeEstado.toUpperCase(),
+                  style: TextStyle(
+                    color: Colors.grey[800],
+                    fontWeight: FontWeight.w900,
+                    fontSize: 11,
+                    letterSpacing: -0.2,
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                // Stepper horizontal
+                Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    // Línea gris de fondo
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Container(
+                        height: 2,
+                        color: Colors.grey[100],
+                      ),
+                    ),
+                    // Línea verde activa que avanza
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: FractionallySizedBox(
+                          widthFactor: stepActual / 3.0,
+                          child: Container(
+                            height: 2,
+                            color: _verde,
+                          ),
+                        ),
+                      ),
+                    ),
+                    // Iconos de pasos
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: List.generate(4, (idx) {
+                        final activo = idx <= stepActual;
+                        return Container(
+                          width: 32,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: activo ? _verde : Colors.grey.shade200,
+                              width: 2,
+                            ),
+                            boxShadow: activo
+                                ? [
+                                    BoxShadow(
+                                      color: _verde.withAlpha(30),
+                                      blurRadius: 4,
+                                      spreadRadius: 1,
+                                    ),
+                                  ]
+                                : [],
+                          ),
+                          child: Icon(
+                            pasos[idx]['icon'] as IconData,
+                            size: 15,
+                            color: activo ? _verde : Colors.grey[300],
+                          ),
+                        );
+                      }),
+                    ),
+                  ],
                 ),
               ],
             ),

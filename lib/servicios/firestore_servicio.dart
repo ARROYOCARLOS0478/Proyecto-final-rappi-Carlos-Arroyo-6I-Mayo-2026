@@ -221,11 +221,19 @@ class FirestoreServicio {
         .collection(Constantes.coleccionPedidos)
         .where('usuarioId', isEqualTo: usuarioId)
         .where('estado', whereIn: ['Pendiente', 'Preparando', 'En Camino'])
-        .orderBy('fechaCreacion', descending: true)
         .snapshots()
-        .map(
-          (snap) => snap.docs.map((doc) => Pedido.fromFirestore(doc)).toList(),
-        );
+        .map((snap) {
+          final list = snap.docs.map((doc) => Pedido.fromFirestore(doc)).toList();
+          list.sort((a, b) {
+            final dateA = a.fechaCreacion;
+            final dateB = b.fechaCreacion;
+            if (dateA == null && dateB == null) return 0;
+            if (dateA == null) return 1;
+            if (dateB == null) return -1;
+            return dateB.compareTo(dateA);
+          });
+          return list;
+        });
   }
 
   // Este sirve para el Perfil (Todo el historial de pedidos)
@@ -233,11 +241,19 @@ class FirestoreServicio {
     return _db
         .collection(Constantes.coleccionPedidos)
         .where('usuarioId', isEqualTo: usuarioId)
-        .orderBy('fechaCreacion', descending: true)
         .snapshots()
-        .map(
-          (snap) => snap.docs.map((doc) => Pedido.fromFirestore(doc)).toList(),
-        );
+        .map((snap) {
+          final list = snap.docs.map((doc) => Pedido.fromFirestore(doc)).toList();
+          list.sort((a, b) {
+            final dateA = a.fechaCreacion;
+            final dateB = b.fechaCreacion;
+            if (dateA == null && dateB == null) return 0;
+            if (dateA == null) return 1;
+            if (dateB == null) return -1;
+            return dateB.compareTo(dateA);
+          });
+          return list;
+        });
   }
 
   /// Escuchar un pedido específico en tiempo real

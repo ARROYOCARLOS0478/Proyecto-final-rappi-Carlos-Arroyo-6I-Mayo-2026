@@ -46,11 +46,13 @@ class _SetupDireccionPantallaState extends State<SetupDireccionPantalla> {
     };
 
     // Llamamos al registro con los datos de AMBAS pantallas
+    final fotoUrl = widget.datosRegistro['fotoUrl'];
     final exito = await authProv.registro(
       widget.datosRegistro['email']!,
       widget.datosRegistro['password']!,
       widget.datosRegistro['nombre']!,
       widget.datosRegistro['telefono']!,
+      fotoUrl: fotoUrl == null || fotoUrl.isEmpty ? null : fotoUrl,
       direccion: direccionFinal, // Aquí pasamos el nuevo mapa
     );
 

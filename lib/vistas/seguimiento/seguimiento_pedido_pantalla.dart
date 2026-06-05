@@ -173,21 +173,18 @@ class _SeguimientoPedidoPantallaState extends State<SeguimientoPedidoPantalla>
   }
 
   void _iniciarFlujo() {
-    // Secuencia controlada: cada fase dura al menos 3s.
+    // Secuencia controlada: cada fase dura al menos 5s.
     _timer = Timer(const Duration(seconds: 0), () async {
       try {
-        // 1) Espera 3s en 'Pendiente' antes de pasar a 'Preparando'
+        // 1) Espera 3s en 'Pendiente' (Fase 0) antes de pasar a 'Preparando' (Fase 1 - checkmark)
         await Future.delayed(const Duration(seconds: 3));
         if (!mounted) return;
-        // Aplicar cambio localmente primero (optimista) para evitar que
-        // fallos remotos o latencia bloqueen la UI.
         _ultimaTransicionLocal = DateTime.now();
         setState(() {
-          _fase = 1;
-          _stepActual = 1;
+          _fase = 1; // Muestra pantalla de checkmark
+          _stepActual = 1; // Stepper: Preparando
           _pedidoData = (_pedidoData ?? {})..['estado'] = 'Preparando';
         });
-        // Intentar actualizar en Firestore (no bloqueamos la UI si falla)
         try {
           await FirebaseFirestore.instance
               .collection('pedidos')
@@ -198,7 +195,14 @@ class _SeguimientoPedidoPantallaState extends State<SeguimientoPedidoPantalla>
         }
         _checkController.forward();
 
-        // 2) Esperar al menos 3s en 'Preparando' antes de asignar repartidor y 'En Camino'
+        // 2) Esperar 2s en la pantalla de checkmark (Fase 1) y luego pasar a la pantalla de seguimiento (Fase 2) en estado 'Preparando'
+        await Future.delayed(const Duration(seconds: 2));
+        if (!mounted) return;
+        setState(() {
+          _fase = 2; // Mostrar pantalla de seguimiento
+        });
+
+        // 3) Esperar otros 3s (total 5s en 'Preparando') antes de pasar a 'En Camino'
         await Future.delayed(const Duration(seconds: 3));
         if (!mounted) return;
         final repartidoresSnap = await FirebaseFirestore.instance
@@ -216,8 +220,8 @@ class _SeguimientoPedidoPantallaState extends State<SeguimientoPedidoPantalla>
         // Cambio optimista local
         _ultimaTransicionLocal = DateTime.now();
         setState(() {
-          _fase = 2;
-          _stepActual = 2;
+          _fase = 2; // Sigue en pantalla de seguimiento
+          _stepActual = 2; // Stepper: En Camino
           _pedidoData = (_pedidoData ?? {})..['estado'] = 'En Camino';
           if (asignadoId != null) _pedidoData!['repartidorId'] = asignadoId;
         });
@@ -232,8 +236,8 @@ class _SeguimientoPedidoPantallaState extends State<SeguimientoPedidoPantalla>
           );
         }
 
-        // 3) Esperar al menos 3s en 'En Camino' antes de marcar 'Entregado'
-        await Future.delayed(const Duration(seconds: 3));
+        // 3) Esperar al menos 5s en 'En Camino' antes de marcar 'Entregado'
+        await Future.delayed(const Duration(seconds: 5));
         if (!mounted) return;
         _ultimaTransicionLocal = DateTime.now();
         setState(() {
@@ -277,8 +281,8 @@ class _SeguimientoPedidoPantallaState extends State<SeguimientoPedidoPantalla>
             final diff = DateTime.now()
                 .difference(_ultimaTransicionLocal!)
                 .inMilliseconds;
-            if (nuevoStep > _stepActual && diff < 3000) {
-              // Ignorar actualización por estar dentro del mínimo de 3s
+            if (nuevoStep > _stepActual && diff < 3500) {
+              // Ignorar actualización por estar dentro del mínimo de 3.5s
               return;
             }
           }
@@ -320,7 +324,18 @@ class _SeguimientoPedidoPantallaState extends State<SeguimientoPedidoPantalla>
           int faseActual;
           switch (estado.toLowerCase()) {
             case 'preparando':
-              faseActual = 1;
+              if (_fase < 1) {
+                faseActual = 1; // Mostrar checkmark
+                Future.delayed(const Duration(seconds: 2), () {
+                  if (mounted && _fase == 1) {
+                    setState(() {
+                      _fase = 2; // Pasar a seguimiento automáticamente
+                    });
+                  }
+                });
+              } else {
+                faseActual = _fase;
+              }
               if (_checkController.status != AnimationStatus.completed) {
                 _checkController.forward();
               }

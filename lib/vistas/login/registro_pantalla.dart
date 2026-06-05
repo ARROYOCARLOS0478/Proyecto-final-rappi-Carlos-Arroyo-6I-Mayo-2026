@@ -15,6 +15,7 @@ class _RegistroPantallaState extends State<RegistroPantalla> {
   final _emailController = TextEditingController();
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
+  final _fotoUrlController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
 
@@ -24,6 +25,7 @@ class _RegistroPantallaState extends State<RegistroPantalla> {
     final password = _passwordController.text.trim();
     final nombre = _nameController.text.trim();
     final telefono = _phoneController.text.trim();
+    final fotoUrl = _fotoUrlController.text.trim();
     final confirmarPass = _confirmPasswordController.text.trim();
 
     // 1. Validaciones básicas de campos vacíos
@@ -52,6 +54,7 @@ class _RegistroPantallaState extends State<RegistroPantalla> {
         password,
         nombre,
         telefono,
+        fotoUrl: fotoUrl.isEmpty ? null : fotoUrl,
       );
 
       if (exito) {
@@ -81,6 +84,7 @@ class _RegistroPantallaState extends State<RegistroPantalla> {
               'email': email,
               'telefono': telefono,
               'password': password,
+              'fotoUrl': fotoUrl,
             },
           ),
         ),
@@ -94,6 +98,7 @@ class _RegistroPantallaState extends State<RegistroPantalla> {
     _emailController.dispose();
     _nameController.dispose();
     _phoneController.dispose();
+    _fotoUrlController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();
@@ -150,6 +155,15 @@ class _RegistroPantallaState extends State<RegistroPantalla> {
                 prefixIcon: Icon(Icons.phone_outlined),
               ),
               keyboardType: TextInputType.phone,
+            ),
+            const SizedBox(height: 15),
+            TextField(
+              controller: _fotoUrlController,
+              decoration: const InputDecoration(
+                labelText: 'Foto de perfil (URL)',
+                prefixIcon: Icon(Icons.image_outlined),
+              ),
+              keyboardType: TextInputType.url,
             ),
             const SizedBox(height: 15),
             TextField(

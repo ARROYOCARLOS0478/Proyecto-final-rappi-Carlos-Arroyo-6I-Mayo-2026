@@ -27,6 +27,7 @@ class _NegocioFormularioPantallaState extends State<NegocioFormularioPantalla> {
   final _telefonoController = TextEditingController();
   final _horarioController = TextEditingController();
   final _imagenUrlController = TextEditingController();
+  final _descuentoController = TextEditingController();
   
   double _calificacion = 0.0;
   bool _isSaving = false;
@@ -41,6 +42,9 @@ class _NegocioFormularioPantallaState extends State<NegocioFormularioPantalla> {
       _horarioController.text = widget.negocio!.horario;
       _imagenUrlController.text = widget.negocio!.imagenUrl;
       _calificacion = widget.negocio!.calificacion;
+      _descuentoController.text = widget.negocio!.descuentoNegocio > 0
+          ? widget.negocio!.descuentoNegocio.toString()
+          : '';
     }
   }
 
@@ -51,6 +55,7 @@ class _NegocioFormularioPantallaState extends State<NegocioFormularioPantalla> {
     _telefonoController.dispose();
     _horarioController.dispose();
     _imagenUrlController.dispose();
+    _descuentoController.dispose();
     super.dispose();
   }
 
@@ -75,6 +80,7 @@ class _NegocioFormularioPantallaState extends State<NegocioFormularioPantalla> {
         fechaRegistro: widget.negocio?.fechaRegistro ?? DateTime.now(),
         costoEnvio: widget.negocio?.costoEnvio ?? 0.0,
         tiempoEntrega: widget.negocio?.tiempoEntrega ?? '15-25 min',
+        descuentoNegocio: int.tryParse(_descuentoController.text.trim()) ?? 0,
       );
 
       try {
@@ -134,12 +140,30 @@ class _NegocioFormularioPantallaState extends State<NegocioFormularioPantalla> {
               TextFormField(
                 controller: _nombreController,
                 decoration: const InputDecoration(
-                  labelText: 'Nombre del Negocio', 
+                  labelText: 'Nombre del Negocio *', 
                   prefixIcon: Icon(Icons.storefront)
                 ),
                 validator: (value) => value!.trim().isEmpty ? 'Campo requerido' : null,
               ),
-              
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _descuentoController,
+                decoration: const InputDecoration(
+                  labelText: 'Descuento (%)', 
+                  prefixIcon: Icon(Icons.percent),
+                  hintText: 'Ej: 30'
+                ),
+                keyboardType: TextInputType.number,
+                validator: (value) {
+                  if (value != null && value.trim().isNotEmpty) {
+                    final val = int.tryParse(value.trim());
+                    if (val == null || val < 0 || val > 100) {
+                      return 'Ingrese un porcentaje válido (0-100)';
+                    }
+                  }
+                  return null;
+                },
+              ),
               const SizedBox(height: 24),
               _buildSectionTitle('Contacto y Ubicación'),
               TextFormField(

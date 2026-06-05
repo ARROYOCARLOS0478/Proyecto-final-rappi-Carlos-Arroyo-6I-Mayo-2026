@@ -243,6 +243,17 @@ class PerfilPantalla extends StatelessWidget {
                           color: TemaApp.naranjaPrincipal,
                         ),
                       )
+                    else if (snap.hasError)
+                      Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Text(
+                            'Error al cargar pedidos: ${snap.error}',
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(color: TemaApp.rojoAcento, fontSize: 13),
+                          ),
+                        ),
+                      )
                     else if (pedidos.isEmpty)
                       _buildSinPedidos()
                     else
@@ -565,7 +576,6 @@ class _UltimoProductoChip extends StatelessWidget {
     final imagenUrl = producto['imagenUrl']?.toString() ?? '';
     final nombre = producto['nombre']?.toString() ?? 'Producto';
     final precio = producto['precio'];
-    final comercio = producto['comercioNombre']?.toString() ?? '';
 
     return Container(
       width: 90,
@@ -784,16 +794,51 @@ class _PedidoHistorialItem extends StatelessWidget {
                     style: const TextStyle(
                       color: TemaApp.textoGris,
                       fontSize: 12,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     '${pedido.items.length} producto(s) • \$${pedido.total.toStringAsFixed(2)}',
                     style: const TextStyle(
-                      color: TemaApp.textoGris,
+                      color: TemaApp.textoOscuro,
                       fontSize: 13,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
+                  const SizedBox(height: 4),
+                  Text(
+                    pedido.items
+                        .map((item) => "${item['cantidad']}x ${item['nombre']}")
+                        .join(', '),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: TemaApp.textoGris,
+                      fontSize: 11,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                  if (pedido.fechaCreacion != null) ...[
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.access_time_outlined,
+                          size: 11,
+                          color: TemaApp.textoGris,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${pedido.fechaCreacion!.day.toString().padLeft(2, '0')}/${pedido.fechaCreacion!.month.toString().padLeft(2, '0')}/${pedido.fechaCreacion!.year} ${pedido.fechaCreacion!.hour.toString().padLeft(2, '0')}:${pedido.fechaCreacion!.minute.toString().padLeft(2, '0')}',
+                          style: const TextStyle(
+                            color: TemaApp.textoGris,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ],
               ),
             ),

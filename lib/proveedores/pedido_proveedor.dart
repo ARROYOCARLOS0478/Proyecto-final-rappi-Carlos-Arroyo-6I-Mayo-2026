@@ -47,9 +47,12 @@ class PedidoProveedor with ChangeNotifier {
         'estado': 'Pendiente', // Estado inicial requerido
         'metodoPago': metodoPago,
         'tipoEnvio': tipoEnvio,
+        'direccion': direccion,
         'direccionEntrega': direccion,
         'total': total,
+        'fechaCreacion': FieldValue.serverTimestamp(),
         'creadoEn': FieldValue.serverTimestamp(),
+        'fechaActualizacion': FieldValue.serverTimestamp(),
         'actualizadoEn': FieldValue.serverTimestamp(),
         // ── Items ───────────────────────────────────────────────────
         'items': items,

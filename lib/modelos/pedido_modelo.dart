@@ -41,13 +41,14 @@ class Pedido {
       items: List<Map<String, dynamic>>.from(data['items'] ?? []),
       total: (data['total'] ?? 0.0).toDouble(),
       estado: data['estado'] ?? data['status'] ?? 'Pendiente',
-      direccion: data['direccion'] ?? data['address'] ?? '',
+      direccion: data['direccion'] ?? data['direccionEntrega'] ?? data['address'] ?? '',
       repartidorId: data['repartidorId'] ?? data['riderId'],
-      fechaCreacion: (data['fechaCreacion'] ?? data['createdAt'] as Timestamp?)
-          ?.toDate(),
-      fechaActualizacion:
-          (data['fechaActualizacion'] ?? data['updatedAt'] as Timestamp?)
-              ?.toDate(),
+      fechaCreacion: (data['fechaCreacion'] as Timestamp? ??
+                      data['createdAt'] as Timestamp? ??
+                      data['creadoEn'] as Timestamp?)?.toDate(),
+      fechaActualizacion: (data['fechaActualizacion'] as Timestamp? ??
+                           data['updatedAt'] as Timestamp? ??
+                           data['actualizadoEn'] as Timestamp?)?.toDate(),
     );
   }
 
