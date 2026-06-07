@@ -28,9 +28,14 @@ A new Flutter project.
 <img width="1919" height="902" alt="image" src="https://github.com/user-attachments/assets/69377936-f13e-4f0f-93c3-88871c7f8760" />
 <img width="1919" height="903" alt="image" src="https://github.com/user-attachments/assets/319a0a9c-8d3e-4bb9-880c-46cdf196cb26" />
 <img width="1919" height="713" alt="image" src="https://github.com/user-attachments/assets/74ad087e-8b4a-4ed3-9deb-aa8780346215" />
+<img width="1919" height="906" alt="image" src="https://github.com/user-attachments/assets/23504650-04b5-486a-b19a-d6cf77474bd7" />
+<img width="1918" height="751" alt="image" src="https://github.com/user-attachments/assets/d03c2507-309b-4c8e-840a-acd6adc131ee" />
+<img width="1919" height="385" alt="image" src="https://github.com/user-attachments/assets/270482a3-25cd-40ca-814a-d2b3cbc5277f" />
+<img width="1919" height="293" alt="image" src="https://github.com/user-attachments/assets/c4b2fd63-b6b8-42c2-af23-6ccda8642541" />
 
 ## Base de datos Firebase
 <img width="1919" height="904" alt="image" src="https://github.com/user-attachments/assets/be66ae92-e4fa-49ac-9be5-6d21e6e2a2b2" />
+<img width="1919" height="904" alt="image" src="https://github.com/user-attachments/assets/e8d042ee-80c7-4a92-bcee-29a2a6615826" />
 
 
 ## Getting Started
