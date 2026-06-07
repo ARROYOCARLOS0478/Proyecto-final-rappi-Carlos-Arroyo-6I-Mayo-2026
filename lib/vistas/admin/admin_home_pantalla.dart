@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../proveedores/autenticacion_proveedor.dart';
-import '../catalogo/negocio_lista_pantalla.dart';
 import '../catalogo/repartidor_lista_pantalla.dart';
 import '../home/home_pantalla.dart';
 import '../login/login_pantalla.dart';
 import '../../core/tema_app.dart';
 import '../catalogo/categorias_admin_pantalla.dart';
 import 'usuarios_lista_pantalla.dart';
+import 'pedidos_lista_pantalla.dart';
 
 class AdminHomePantalla extends StatelessWidget {
   const AdminHomePantalla({super.key});
@@ -109,6 +109,17 @@ class AdminHomePantalla extends StatelessWidget {
               label: const Text('Gestionar Usuarios'),
               style: ElevatedButton.styleFrom(
               ),
+            ),
+            const SizedBox(height: 12),
+            ElevatedButton.icon(
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const PedidosListaPantalla(),
+                ),
+              ),
+              icon: const Icon(Icons.receipt_long),
+              label: const Text('Gestionar Pedidos'),
             ),
             const SizedBox(height: 12),
             ElevatedButton.icon(

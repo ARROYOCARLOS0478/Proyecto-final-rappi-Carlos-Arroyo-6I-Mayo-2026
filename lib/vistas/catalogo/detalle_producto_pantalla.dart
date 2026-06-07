@@ -181,20 +181,41 @@ class _DetalleProductoPantallaState extends State<DetalleProductoPantalla> {
                         }
 
                         // 2. Lógica normal para Clientes (solo si NO es admin)
-                        for (int i = 0; i < cantidad; i++) {
-                          context.read<CarritoProveedor>().agregarProducto(
+                        final carrito = context.read<CarritoProveedor>();
+                        
+                        Future<void> realizarAdicion() async {
+                          final resultado = await carrito.agregarProducto(
                             widget.producto,
                           );
+
+                          if (resultado == AgregarResultado.comercioDiferente) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text("Vacía el carrito para agregar el producto."),
+                                  backgroundColor: Colors.redAccent,
+                                ),
+                              );
+                            }
+                            return;
+                          }
+
+                          for (int i = 1; i < cantidad; i++) {
+                            await carrito.agregarProducto(widget.producto);
+                          }
+
+                          if (context.mounted) {
+                            Navigator.pop(context);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text("Se agregaron $cantidad ${widget.producto.nombre}"),
+                                backgroundColor: const Color(0xFF00C5AB),
+                              ),
+                            );
+                          }
                         }
-                        
-                        Navigator.pop(context);
-                        
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text("Se agregaron $cantidad ${widget.producto.nombre}"),
-                            backgroundColor: const Color(0xFF00C5AB),
-                          ),
-                        );
+
+                        realizarAdicion();
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(

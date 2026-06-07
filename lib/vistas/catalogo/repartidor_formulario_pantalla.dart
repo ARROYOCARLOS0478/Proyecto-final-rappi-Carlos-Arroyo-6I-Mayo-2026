@@ -17,6 +17,7 @@ class _RepartidorFormularioPantallaState extends State<RepartidorFormularioPanta
   late TextEditingController _nombreController;
   late TextEditingController _emailController;
   late TextEditingController _telefonoController;
+  late TextEditingController _fotoUrlController;
   String _vehiculo = 'Moto';
   String _estado = 'Activo';
   bool _isLoading = false;
@@ -27,10 +28,20 @@ class _RepartidorFormularioPantallaState extends State<RepartidorFormularioPanta
     _nombreController = TextEditingController(text: widget.repartidor?.nombre ?? '');
     _emailController = TextEditingController(text: widget.repartidor?.email ?? '');
     _telefonoController = TextEditingController(text: widget.repartidor?.telefono ?? '');
+    _fotoUrlController = TextEditingController(text: widget.repartidor?.fotoUrl ?? '');
     if (widget.repartidor != null) {
       _vehiculo = widget.repartidor!.vehiculo;
       _estado = widget.repartidor!.estado;
     }
+  }
+
+  @override
+  void dispose() {
+    _nombreController.dispose();
+    _emailController.dispose();
+    _telefonoController.dispose();
+    _fotoUrlController.dispose();
+    super.dispose();
   }
 
   void _guardar() async {
@@ -46,6 +57,7 @@ class _RepartidorFormularioPantallaState extends State<RepartidorFormularioPanta
         vehiculo: _vehiculo,
         estado: _estado,
         fechaRegistro: widget.repartidor?.fechaRegistro,
+        fotoUrl: _fotoUrlController.text.trim().isEmpty ? null : _fotoUrlController.text.trim(),
       );
 
       try {
@@ -96,6 +108,12 @@ class _RepartidorFormularioPantallaState extends State<RepartidorFormularioPanta
                 decoration: const InputDecoration(labelText: 'Teléfono', prefixIcon: Icon(Icons.phone)),
                 keyboardType: TextInputType.phone,
                 validator: (value) => value!.trim().isEmpty ? 'Campo requerido' : null,
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _fotoUrlController,
+                decoration: const InputDecoration(labelText: 'Foto de perfil (URL)', prefixIcon: Icon(Icons.image_outlined)),
+                keyboardType: TextInputType.url,
               ),
               const SizedBox(height: 24),
               const Text('Vehículo', style: TextStyle(fontWeight: FontWeight.bold)),

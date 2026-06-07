@@ -7,20 +7,21 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:async';
 import 'dart:math' as math;
+import '../home/home_pantalla.dart';
 
 // ── Mapeo estado → progreso ────────────────────────────────────────────────
 double _estadoAProgreso(String? estado) {
   switch (estado?.toLowerCase()) {
     case 'pendiente':
-      return 0.0;
+      return 0.25;
     case 'preparando':
-      return 0.33;
+      return 0.50;
     case 'en camino':
-      return 0.66;
+      return 0.75;
     case 'entregado':
       return 1.0;
     default:
-      return 0.0;
+      return 0.25;
   }
 }
 
@@ -173,15 +174,31 @@ class _SeguimientoPedidoPantallaState extends State<SeguimientoPedidoPantalla>
   }
 
   void _iniciarFlujo() {
-    // Secuencia controlada: cada fase dura al menos 5s.
+    // Secuencia controlada: cada etapa dura 4 segundos.
     _timer = Timer(const Duration(seconds: 0), () async {
       try {
-        // 1) Espera 3s en 'Pendiente' (Fase 0) antes de pasar a 'Preparando' (Fase 1 - checkmark)
-        await Future.delayed(const Duration(seconds: 3));
+        // 1) Espera 4s en 'Pendiente' (Fase 0 - Creando Pedido)
+        await Future.delayed(const Duration(seconds: 4));
+        if (!mounted) return;
+        setState(() {
+          _fase = 1; // Mostrar checkmark
+        });
+        _checkController.forward();
+
+        // 2) Esperar 2s en la pantalla de checkmark (Fase 1) y luego pasar a la pantalla de seguimiento (Fase 2) en estado 'Pendiente' (RECIBIDO)
+        await Future.delayed(const Duration(seconds: 2));
         if (!mounted) return;
         _ultimaTransicionLocal = DateTime.now();
         setState(() {
-          _fase = 1; // Muestra pantalla de checkmark
+          _fase = 2; // Mostrar pantalla de seguimiento
+          _stepActual = 0; // Stepper: Recibido
+        });
+
+        // 3) Esperar 4s en 'Pendiente' (RECIBIDO) antes de pasar a 'Preparando'
+        await Future.delayed(const Duration(seconds: 4));
+        if (!mounted) return;
+        _ultimaTransicionLocal = DateTime.now();
+        setState(() {
           _stepActual = 1; // Stepper: Preparando
           _pedidoData = (_pedidoData ?? {})..['estado'] = 'Preparando';
         });
@@ -193,34 +210,24 @@ class _SeguimientoPedidoPantallaState extends State<SeguimientoPedidoPantalla>
         } catch (e) {
           debugPrint('Warning: no se pudo escribir estado Preparando: $e');
         }
-        _checkController.forward();
 
-        // 2) Esperar 2s en la pantalla de checkmark (Fase 1) y luego pasar a la pantalla de seguimiento (Fase 2) en estado 'Preparando'
-        await Future.delayed(const Duration(seconds: 2));
-        if (!mounted) return;
-        setState(() {
-          _fase = 2; // Mostrar pantalla de seguimiento
-        });
-
-        // 3) Esperar otros 3s (total 5s en 'Preparando') antes de pasar a 'En Camino'
-        await Future.delayed(const Duration(seconds: 3));
+        // 4) Esperar 4s en 'Preparando' antes de pasar a 'En Camino'
+        await Future.delayed(const Duration(seconds: 4));
         if (!mounted) return;
         final repartidoresSnap = await FirebaseFirestore.instance
             .collection('repartidores')
-            .limit(1)
             .get();
 
         final updateData = {'estado': 'En Camino'};
         String? asignadoId;
         if (repartidoresSnap.docs.isNotEmpty) {
-          asignadoId = repartidoresSnap.docs.first.id;
+          final randomIndex = math.Random().nextInt(repartidoresSnap.docs.length);
+          asignadoId = repartidoresSnap.docs[randomIndex].id;
           updateData['repartidorId'] = asignadoId;
         }
 
-        // Cambio optimista local
         _ultimaTransicionLocal = DateTime.now();
         setState(() {
-          _fase = 2; // Sigue en pantalla de seguimiento
           _stepActual = 2; // Stepper: En Camino
           _pedidoData = (_pedidoData ?? {})..['estado'] = 'En Camino';
           if (asignadoId != null) _pedidoData!['repartidorId'] = asignadoId;
@@ -236,8 +243,8 @@ class _SeguimientoPedidoPantallaState extends State<SeguimientoPedidoPantalla>
           );
         }
 
-        // 3) Esperar al menos 5s en 'En Camino' antes de marcar 'Entregado'
-        await Future.delayed(const Duration(seconds: 5));
+        // 5) Esperar al menos 4s en 'En Camino' antes de marcar 'Entregado'
+        await Future.delayed(const Duration(seconds: 4));
         if (!mounted) return;
         _ultimaTransicionLocal = DateTime.now();
         setState(() {
@@ -323,6 +330,9 @@ class _SeguimientoPedidoPantallaState extends State<SeguimientoPedidoPantalla>
 
           int faseActual;
           switch (estado.toLowerCase()) {
+            case 'pendiente':
+              faseActual = _fase;
+              break;
             case 'preparando':
               if (_fase < 1) {
                 faseActual = 1; // Mostrar checkmark
@@ -347,7 +357,7 @@ class _SeguimientoPedidoPantallaState extends State<SeguimientoPedidoPantalla>
               faseActual = 3;
               break;
             default:
-              faseActual = 0;
+              faseActual = _fase;
           }
 
           if (mounted) {
@@ -936,7 +946,11 @@ class _SeguimientoPedidoPantallaState extends State<SeguimientoPedidoPantalla>
   }
 
   Widget _buildCloseButton() => GestureDetector(
-    onTap: () => Navigator.pop(context),
+    onTap: () => Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (_) => const HomePantalla()),
+      (route) => false,
+    ),
     child: Container(
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(color: _fondoClaro, shape: BoxShape.circle),
@@ -1147,7 +1161,11 @@ class _SeguimientoPedidoPantallaState extends State<SeguimientoPedidoPantalla>
             child: SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: () => Navigator.pop(context),
+                onPressed: () => Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(builder: (_) => const HomePantalla()),
+                  (route) => false,
+                ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: _verde,
                   padding: const EdgeInsets.symmetric(vertical: 20),

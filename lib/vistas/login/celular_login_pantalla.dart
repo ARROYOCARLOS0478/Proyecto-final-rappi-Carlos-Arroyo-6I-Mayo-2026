@@ -39,9 +39,10 @@ class _CelularLoginPantallaState extends State<CelularLoginPantalla> {
       final destino = authProv.usuarioDatos?.rol == Constantes.rolAdministrador
           ? const AdminHomePantalla()
           : const HomePantalla();
-      Navigator.pushReplacement(
+      Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(builder: (context) => destino),
+        (route) => false,
       );
     } else {
       if (mounted) {

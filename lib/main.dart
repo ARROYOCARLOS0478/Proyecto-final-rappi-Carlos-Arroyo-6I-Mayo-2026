@@ -12,9 +12,6 @@ import 'proveedores/autenticacion_proveedor.dart';
 import 'proveedores/carrito_proveedor.dart';
 import 'proveedores/pedido_proveedor.dart';
 
-// Servicios
-import 'servicios/datos_semilla_servicio.dart';
-
 // Pantallas
 import 'vistas/splash/splash_pantalla.dart';
 

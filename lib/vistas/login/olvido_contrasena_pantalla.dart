@@ -48,6 +48,7 @@ class _OlvidoContrasenaPantallaState extends State<OlvidoContrasenaPantalla> {
         title: const Text('Recuperar Contraseña'),
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
+        iconTheme: const IconThemeData(color: Colors.black),
         elevation: 0,
       ),
       backgroundColor: Colors.white,

@@ -309,4 +309,20 @@ class FirestoreServicio {
   Future<void> eliminarUsuario(String uid) {
     return _db.collection(Constantes.coleccionUsuarios).doc(uid).delete();
   }
+
+  // --- GESTIÓN DE PEDIDOS (ADMIN) ---
+  Stream<List<Pedido>> obtenerTodosLosPedidos() {
+    return _db
+        .collection(Constantes.coleccionPedidos)
+        .orderBy('fechaCreacion', descending: true)
+        .snapshots()
+        .map(
+          (snapshot) =>
+              snapshot.docs.map((doc) => Pedido.fromFirestore(doc)).toList(),
+        );
+  }
+
+  Future<void> eliminarPedido(String id) {
+    return _db.collection(Constantes.coleccionPedidos).doc(id).delete();
+  }
 }

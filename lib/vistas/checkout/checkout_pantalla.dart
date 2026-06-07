@@ -36,7 +36,6 @@ class _CheckoutPantallaState extends State<CheckoutPantalla> {
   // Datos de tarjeta (opcionales)
   String? _numeroTarjeta;
   String? _nombreTarjeta;
-  String? _vencimiento;
 
   final List<Map<String, dynamic>> _tiposEnvio = [
     {'titulo': 'Más rápido', 'tiempo': '14-34 MIN', 'costo': 26.99},
@@ -513,7 +512,6 @@ class _CheckoutPantallaState extends State<CheckoutPantalla> {
             _metodoPago = 'efectivo';
             _numeroTarjeta = null;
             _nombreTarjeta = null;
-            _vencimiento = null;
           });
           Navigator.pop(context);
         },
@@ -522,7 +520,6 @@ class _CheckoutPantallaState extends State<CheckoutPantalla> {
             _metodoPago = 'tarjeta';
             _numeroTarjeta = numero;
             _nombreTarjeta = nombre;
-            _vencimiento = vencimiento;
           });
           Navigator.pop(context);
         },
@@ -797,13 +794,38 @@ class _PagoBottomSheetState extends State<_PagoBottomSheet> {
           width: double.infinity,
           child: ElevatedButton(
             onPressed: () {
-              if (_numeroCtrl.text.isNotEmpty && _nombreCtrl.text.isNotEmpty) {
-                widget.onTarjeta(
-                  _numeroCtrl.text,
-                  _nombreCtrl.text,
-                  _vencCtrl.text,
+              if (_numeroCtrl.text.isEmpty || _nombreCtrl.text.isEmpty || _vencCtrl.text.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Completa todos los campos de la tarjeta')),
                 );
+                return;
               }
+
+              final vencimientoText = _vencCtrl.text.trim();
+              final regExp = RegExp(r'^(0[1-9]|1[0-2])\/([0-9]{2})$');
+              if (!regExp.hasMatch(vencimientoText)) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Formato de vencimiento inválido. Use MM/AA (Ej. 12/28)')),
+                );
+                return;
+              }
+
+              final partes = vencimientoText.split('/');
+              final mes = int.tryParse(partes[0]) ?? 0;
+              final anio = (int.tryParse(partes[1]) ?? 0) + 2000;
+
+              if (anio < 2026 || (anio == 2026 && mes < 6)) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('La tarjeta ingresada ya expiró (vencimiento anterior a 06/26)')),
+                );
+                return;
+              }
+
+              widget.onTarjeta(
+                _numeroCtrl.text,
+                _nombreCtrl.text,
+                _vencCtrl.text,
+              );
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: _verde,

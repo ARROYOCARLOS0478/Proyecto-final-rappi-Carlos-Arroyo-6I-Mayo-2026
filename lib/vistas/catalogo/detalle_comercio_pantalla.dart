@@ -588,9 +588,17 @@ class _ProductoCard extends StatelessWidget {
                               );
                               return;
                             }
-                            context.read<CarritoProveedor>().agregarProducto(
-                              producto,
-                            );
+                            final carrito = context.read<CarritoProveedor>();
+                            carrito.agregarProducto(producto).then((resultado) {
+                              if (resultado == AgregarResultado.comercioDiferente && context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text("Vacía el carrito para agregar el producto."),
+                                    backgroundColor: Colors.redAccent,
+                                  ),
+                                );
+                              }
+                            });
                           },
                           child: Container(
                             padding: const EdgeInsets.all(6),

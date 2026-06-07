@@ -58,11 +58,18 @@ class RepartidorListaPantalla extends StatelessWidget {
                 margin: const EdgeInsets.only(bottom: 12),
                 child: ListTile(
                   leading: CircleAvatar(
-                    backgroundColor: r.estado == 'Activo' ? Colors.green : Colors.red,
-                    child: Icon(
-                      r.vehiculo == 'Moto' ? Icons.motorcycle : Icons.directions_bike,
-                      color: Colors.white,
-                    ),
+                    backgroundImage: r.fotoUrl != null && r.fotoUrl!.isNotEmpty
+                        ? NetworkImage(r.fotoUrl!)
+                        : null,
+                    backgroundColor: r.fotoUrl != null && r.fotoUrl!.isNotEmpty
+                        ? Colors.transparent
+                        : (r.estado == 'Activo' ? Colors.green : Colors.red),
+                    child: r.fotoUrl != null && r.fotoUrl!.isNotEmpty
+                        ? null
+                        : Icon(
+                            r.vehiculo == 'Moto' ? Icons.motorcycle : Icons.directions_bike,
+                            color: Colors.white,
+                          ),
                   ),
                   title: Text(r.nombre, style: const TextStyle(fontWeight: FontWeight.bold)),
                   subtitle: Text('${r.vehiculo} • ${r.telefono}\nEstado: ${r.estado}'),

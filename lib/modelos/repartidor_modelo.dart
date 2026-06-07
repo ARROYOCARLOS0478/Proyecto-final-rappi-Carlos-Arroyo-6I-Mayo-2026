@@ -10,6 +10,7 @@ class Repartidor {
   final String? ubicacion; // Coordenadas o descripción de ubicación mock
   final String? eta; // Tiempo estimado de entrega
   final DateTime? fechaRegistro;
+  final String? fotoUrl;
 
   Repartidor({
     this.id,
@@ -21,6 +22,7 @@ class Repartidor {
     this.ubicacion,
     this.eta,
     this.fechaRegistro,
+    this.fotoUrl,
   });
 
   factory Repartidor.fromFirestore(DocumentSnapshot doc) {
@@ -35,6 +37,7 @@ class Repartidor {
       ubicacion: data['ubicacion'] ?? data['location'],
       eta: data['eta'],
       fechaRegistro: (data['fechaRegistro'] as Timestamp?)?.toDate(),
+      fotoUrl: data['fotoUrl'],
     );
   }
 
@@ -48,6 +51,7 @@ class Repartidor {
       'ubicacion': ubicacion,
       'eta': eta,
       'fechaRegistro': fechaRegistro ?? FieldValue.serverTimestamp(),
+      'fotoUrl': fotoUrl,
     };
   }
 }

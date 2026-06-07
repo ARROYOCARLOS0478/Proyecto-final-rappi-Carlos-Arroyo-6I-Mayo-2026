@@ -26,6 +26,7 @@ class _HomePantallaState extends State<HomePantalla> {
     viewportFraction: 0.88,
   );
   int _bannerActual = 0;
+  final TextEditingController _searchController = TextEditingController();
 
   static const Color _naranja = Color(0xFFFF441F);
   static const Color _verde = Color(0xFF00C5AB);
@@ -35,13 +36,13 @@ class _HomePantallaState extends State<HomePantalla> {
     {
       'nombre': 'Restaurantes',
       'img':
-          'https://raw.githubusercontent.com/ARROYOCARLOS0478/imagenes/refs/heads/main/hamburguesa.png',
+          'https://raw.githubusercontent.com/ARROYOCARLOS0478/imagenes-proyecto-final/refs/heads/main/restaurantes_categoria.png',
       'color': const Color(0xFFFCE4EC),
     },
     {
       'nombre': 'Supermercado',
       'img':
-          'https://raw.githubusercontent.com/ARROYOCARLOS0478/imagenes/refs/heads/main/carrito-super.png',
+          'https://raw.githubusercontent.com/ARROYOCARLOS0478/imagenes-proyecto-final/refs/heads/main/supermercado_categoria.png',
       'color': const Color(0xFFE8F5E9),
     },
   ];
@@ -50,22 +51,22 @@ class _HomePantallaState extends State<HomePantalla> {
     {
       'nombre': 'Farmacia',
       'img':
-          'https://raw.githubusercontent.com/ARROYOCARLOS0478/imagenes/refs/heads/main/botiquin.jfif',
+          'https://raw.githubusercontent.com/ARROYOCARLOS0478/imagenes-proyecto-final/refs/heads/main/farmacia_categoria.png',
     },
     {
       'nombre': 'Tiendas',
       'img':
-          'https://images.unsplash.com/photo-1761333477936-56fbc7851c65?w=400',
+          'https://raw.githubusercontent.com/ARROYOCARLOS0478/imagenes-proyecto-final/refs/heads/main/tiendas_categoria.png',
     },
     {
       'nombre': 'Express',
       'img':
-          'https://raw.githubusercontent.com/ARROYOCARLOS0478/imagenes/refs/heads/main/express.jfif',
+          'https://raw.githubusercontent.com/ARROYOCARLOS0478/imagenes-proyecto-final/refs/heads/main/express_categoria.png',
     },
     {
       'nombre': 'Licor',
       'img':
-          'https://raw.githubusercontent.com/ARROYOCARLOS0478/imagenes/refs/heads/main/Licor.jfif',
+          'https://raw.githubusercontent.com/ARROYOCARLOS0478/imagenes-proyecto-final/refs/heads/main/licor_categoria.png',
     },
   ];
 
@@ -73,20 +74,20 @@ class _HomePantallaState extends State<HomePantalla> {
     {
       'titulo': 'ENVÍO GRATIS',
       'subtitulo': 'EN TU PRIMER SÚPER',
-      'img': 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=800',
+      'img': 'https://raw.githubusercontent.com/ARROYOCARLOS0478/imagenes-proyecto-final/refs/heads/main/envio_gratis.jpg',
       'categoria': 'Supermercado',
     },
     {
       'titulo': 'BUCKET FAMILIAR',
       'subtitulo': 'PRECIO ESPECIAL',
       'img':
-          'https://images.unsplash.com/photo-1513639776629-7b61b0ac49cb?w=800',
+          'https://raw.githubusercontent.com/ARROYOCARLOS0478/imagenes-proyecto-final/refs/heads/main/bucket_familiar.jpg',
       'categoria': 'Restaurantes',
     },
     {
       'titulo': 'TEMPORADA DE REGALOS',
       'subtitulo': 'HASTA 15 MESES SIN INTERESES',
-      'img': 'https://images.unsplash.com/photo-1560243563-062abb001529?w=800',
+      'img': 'https://raw.githubusercontent.com/ARROYOCARLOS0478/imagenes-proyecto-final/refs/heads/main/temp_regalos.jpg',
       'categoria': 'Tiendas',
     },
   ];
@@ -94,6 +95,7 @@ class _HomePantallaState extends State<HomePantalla> {
   @override
   void dispose() {
     _bannerController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -237,17 +239,24 @@ class _HomePantallaState extends State<HomePantalla> {
     CarritoProveedor carritoP,
   ) {
     final uid = authProv.usuarioDatos?.uid;
+    final query = _searchController.text.trim().toLowerCase();
+    final bool isSearching = query.isNotEmpty;
+
     return CustomScrollView(
       physics: const BouncingScrollPhysics(),
       slivers: [
         SliverToBoxAdapter(child: _buildHeader(authProv, carritoP)),
-        if (uid != null)
-          SliverToBoxAdapter(child: _buildBannerSeguimientoPremium(uid)),
-        SliverToBoxAdapter(child: _buildBanners()),
-        SliverToBoxAdapter(child: _buildCategoriasGrandes()),
-        SliverToBoxAdapter(child: _buildCategoriasChicas()),
-        _buildOfertasSection(),
-        SliverToBoxAdapter(child: _buildSectionLabel('CERCA DE TI')),
+        if (!isSearching) ...[
+          if (uid != null)
+            SliverToBoxAdapter(child: _buildBannerSeguimientoPremium(uid)),
+          SliverToBoxAdapter(child: _buildCategoriasGrandes()),
+          SliverToBoxAdapter(child: _buildCategoriasChicas()),
+          SliverToBoxAdapter(child: _buildBanners()),
+          _buildOfertasSection(),
+          SliverToBoxAdapter(child: _buildSectionLabel('CERCA DE TI')),
+        ] else ...[
+          SliverToBoxAdapter(child: _buildSectionLabel('RESULTADOS DE BÚSQUEDA')),
+        ],
         _buildListaComercios(),
         const SliverToBoxAdapter(child: SizedBox(height: 120)),
       ],
@@ -255,6 +264,7 @@ class _HomePantallaState extends State<HomePantalla> {
   }
 
   Widget _buildHeader(AutenticacionProveedor auth, CarritoProveedor carrito) {
+    final bool esAdmin = auth.usuarioDatos?.rol == 'admin';
     final direccion = auth.usuarioDatos?.direcciones.isNotEmpty == true
         ? auth.usuarioDatos!.direcciones.first
         : null;
@@ -265,50 +275,81 @@ class _HomePantallaState extends State<HomePantalla> {
           Row(
             children: [
               Expanded(
-                child: GestureDetector(
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const GestionDireccionesPantalla(),
-                    ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Ciudad Juárez',
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                      Row(
+                child: esAdmin
+                    ? Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Flexible(
-                            child: Text(
-                              direccion != null
-                                  ? direccion.toUpperCase()
-                                  : 'AGREGA UNA DIRECCIÓN',
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: direccion != null
-                                    ? Colors.grey[600]
-                                    : _naranja,
-                                fontWeight: FontWeight.bold,
-                              ),
+                          const Text(
+                            'Ciudad Juárez',
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w900,
                             ),
                           ),
-                          const Icon(
-                            Icons.keyboard_arrow_down,
-                            size: 16,
-                            color: _naranja,
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.admin_panel_settings,
+                                size: 13,
+                                color: _naranja,
+                              ),
+                              const SizedBox(width: 4),
+                              const Text(
+                                'MODO ADMINISTRADOR',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: _naranja,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
                           ),
                         ],
+                      )
+                    : GestureDetector(
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const GestionDireccionesPantalla(),
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Ciudad Juárez',
+                              style: TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                            Row(
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    direccion != null
+                                        ? direccion.toUpperCase()
+                                        : 'AGREGA UNA DIRECCIÓN',
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: direccion != null
+                                          ? Colors.grey[600]
+                                          : _naranja,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                                const Icon(
+                                  Icons.keyboard_arrow_down,
+                                  size: 16,
+                                  color: _naranja,
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
-                    ],
-                  ),
-                ),
               ),
               if (carrito.cantidadTotal > 0) _buildCartBadge(carrito),
             ],
@@ -327,12 +368,25 @@ class _HomePantallaState extends State<HomePantalla> {
         color: Colors.grey[100],
         borderRadius: BorderRadius.circular(16),
       ),
-      child: const TextField(
+      child: TextField(
+        controller: _searchController,
+        onChanged: (val) {
+          setState(() {});
+        },
         decoration: InputDecoration(
-          icon: Icon(Icons.search, size: 20, color: Colors.grey),
+          icon: const Icon(Icons.search, size: 20, color: Colors.grey),
+          suffixIcon: _searchController.text.isNotEmpty
+              ? IconButton(
+                  icon: const Icon(Icons.clear, size: 20, color: Colors.grey),
+                  onPressed: () {
+                    _searchController.clear();
+                    setState(() {});
+                  },
+                )
+              : null,
           hintText: '¿Qué quisieras hoy?',
           border: InputBorder.none,
-          contentPadding: EdgeInsets.symmetric(vertical: 14),
+          contentPadding: const EdgeInsets.symmetric(vertical: 14),
         ),
       ),
     );
@@ -685,7 +739,7 @@ class _HomePantallaState extends State<HomePantalla> {
                 ),
               ),
               child: Container(
-                height: 115,
+                height: 120,
                 margin: EdgeInsets.only(right: e.key == 0 ? 10 : 0),
                 decoration: BoxDecoration(
                   color: cat['color'],
@@ -696,16 +750,17 @@ class _HomePantallaState extends State<HomePantalla> {
                   children: [
                     Image.network(
                       cat['img'],
-                      height: 62,
+                      height: 64,
                       errorBuilder: (ctx, _, _) =>
                           const Icon(Icons.store, size: 50),
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 8),
                     Text(
                       cat['nombre'].toString().toUpperCase(),
                       style: const TextStyle(
                         fontWeight: FontWeight.w900,
-                        fontSize: 10,
+                        fontSize: 13,
+                        letterSpacing: 0.5,
                       ),
                     ),
                   ],
@@ -785,6 +840,7 @@ class _HomePantallaState extends State<HomePantalla> {
   }
 
   Widget _buildListaComercios() {
+    final query = _searchController.text.trim().toLowerCase();
     return StreamBuilder<List<Comercio>>(
       stream: _firestoreServicio.obtenerComercios(),
       builder: (context, snap) {
@@ -799,12 +855,33 @@ class _HomePantallaState extends State<HomePantalla> {
           );
         }
         final comercios = snap.data ?? [];
+        final filteredComercios = query.isEmpty
+            ? comercios
+            : comercios.where((c) {
+                return c.nombre.toLowerCase().contains(query) ||
+                    c.categoria.toLowerCase().contains(query);
+              }).toList();
+
+        if (filteredComercios.isEmpty) {
+          return const SliverToBoxAdapter(
+            child: Center(
+              child: Padding(
+                padding: EdgeInsets.all(40),
+                child: Text(
+                  'No se encontraron negocios para tu búsqueda.',
+                  style: TextStyle(color: Colors.grey, fontSize: 16),
+                ),
+              ),
+            ),
+          );
+        }
+
         return SliverPadding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
           sliver: SliverList(
             delegate: SliverChildBuilderDelegate(
-              (context, i) => _buildComercioCard(comercios[i]),
-              childCount: comercios.length,
+              (context, i) => _buildComercioCard(filteredComercios[i]),
+              childCount: filteredComercios.length,
             ),
           ),
         );
@@ -922,71 +999,116 @@ class _HomePantallaState extends State<HomePantalla> {
     );
   }
 
+  Widget _buildTabHeader(String titulo) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border(
+          bottom: BorderSide(color: Colors.grey.shade100, width: 1),
+        ),
+      ),
+      child: Text(
+        titulo,
+        style: const TextStyle(
+          fontSize: 22,
+          fontWeight: FontWeight.w900,
+          color: _azulOscuro,
+        ),
+      ),
+    );
+  }
+
   Widget _buildOfertasTab() {
-    return StreamBuilder<List<Comercio>>(
-      stream: _firestoreServicio.obtenerComerciosConOferta(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        final comercios = snapshot.data ?? [];
-        if (comercios.isEmpty) {
-          return const Center(
-            child: Padding(
-              padding: EdgeInsets.all(24),
-              child: Text(
-                'No hay ofertas activas en este momento.',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 16, color: Colors.grey),
-              ),
-            ),
-          );
-        }
-        return ListView.builder(
-          padding: const EdgeInsets.all(16),
-          itemCount: comercios.length,
-          itemBuilder: (context, index) => _buildComercioCard(comercios[index]),
-        );
-      },
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildTabHeader('OFERTAS DE HOY'),
+        Expanded(
+          child: StreamBuilder<List<Comercio>>(
+            stream: _firestoreServicio.obtenerComerciosConOferta(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              final comercios = snapshot.data ?? [];
+              if (comercios.isEmpty) {
+                return const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(24),
+                    child: Text(
+                      'No hay ofertas activas en este momento.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 16, color: Colors.grey),
+                    ),
+                  ),
+                );
+              }
+              return ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: comercios.length,
+                itemBuilder: (context, index) => _buildComercioCard(comercios[index]),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 
   Widget _buildFavoritosTab(AutenticacionProveedor authProv) {
     final uid = authProv.usuarioDatos?.uid ?? authProv.usuarioFirebase?.uid;
     if (uid == null) {
-      return const Center(
-        child: Text(
-          'Inicia sesión para ver tus favoritos.',
-          textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 16, color: Colors.grey),
-        ),
-      );
-    }
-    return StreamBuilder<List<Comercio>>(
-      stream: _firestoreServicio.obtenerFavoritosUsuario(uid),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        final favoritos = snapshot.data ?? [];
-        if (favoritos.isEmpty) {
-          return const Center(
-            child: Padding(
-              padding: EdgeInsets.all(24),
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildTabHeader('MIS FAVORITOS'),
+          const Expanded(
+            child: Center(
               child: Text(
-                'Aún no tienes favoritos. Marca negocios con el corazón para guardarlos aquí.',
+                'Inicia sesión para ver tus favoritos.',
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 16, color: Colors.grey),
               ),
             ),
-          );
-        }
-        return ListView.builder(
-          padding: const EdgeInsets.all(16),
-          itemCount: favoritos.length,
-          itemBuilder: (context, index) => _buildComercioCard(favoritos[index]),
-        );
-      },
+          ),
+        ],
+      );
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildTabHeader('MIS FAVORITOS'),
+        Expanded(
+          child: StreamBuilder<List<Comercio>>(
+            stream: _firestoreServicio.obtenerFavoritosUsuario(uid),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              final favoritos = snapshot.data ?? [];
+              if (favoritos.isEmpty) {
+                return const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(24),
+                    child: Text(
+                      'Aún no tienes favoritos. Marca negocios con el corazón para guardarlos aquí.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 16, color: Colors.grey),
+                    ),
+                  ),
+                );
+              }
+              return ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: favoritos.length,
+                itemBuilder: (context, index) => _buildComercioCard(favoritos[index]),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 

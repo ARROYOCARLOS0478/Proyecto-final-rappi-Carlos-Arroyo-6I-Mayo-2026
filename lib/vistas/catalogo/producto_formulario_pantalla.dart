@@ -22,7 +22,69 @@ class _ProductoFormularioPantallaState extends State<ProductoFormularioPantalla>
   late TextEditingController _imgCtrl;
   String _categoriaSeleccionada = 'General';
 
-  final List<String> _categorias = ['General', 'Pizzas', 'Bebidas', 'Postres', 'Hamburguesas', 'Entradas'];
+  final List<String> _categorias = [
+    'General',
+    'Pizzas',
+    'Bebidas',
+    'Postres',
+    'Hamburguesas',
+    'Entradas',
+    'Tacos',
+    'Quesadillas',
+    'Burritos',
+    'Cubetas',
+    'Combos',
+    'Sandwiches',
+    'Acompañamientos',
+    'Rolls',
+    'Sashimi',
+    'Sopas',
+    'Lácteos',
+    'Frutas y Verduras',
+    'Panadería',
+    'Limpieza',
+    'Abarrotes',
+    'Carnes',
+    'Medicamentos',
+    'Primeros Auxilios',
+    'Vitaminas',
+    'Cuidado Personal',
+    'Equipos',
+    'Higiene Bucal',
+    'Higiene',
+    'Hidratación',
+    'Perfumería',
+    'Calzado',
+    'Moda',
+    'Ropa',
+    'Telefonía',
+    'Electrónica',
+    'Audio',
+    'Hogar',
+    'Muebles',
+    'Línea Blanca',
+    'Joyería',
+    'Cocina',
+    'Snacks',
+    'Dulces',
+    'Comida Rápida',
+    'Tabaco',
+    'Whisky',
+    'Vinos',
+    'Cervezas',
+    'Tequila',
+    'Champagne',
+    'Espumosos',
+    'Ron',
+    'Vodka',
+    'Gin',
+    'Mezcal',
+    'Cognac',
+    'Packs',
+    'Envíos',
+    'Documentos',
+    'Servicios'
+  ];
 
   @override
   void initState() {
@@ -32,7 +94,13 @@ class _ProductoFormularioPantallaState extends State<ProductoFormularioPantalla>
     _precioCtrl = TextEditingController(text: widget.producto?.precio.toString() ?? '');
     _stockCtrl = TextEditingController(text: widget.producto?.stock.toString() ?? '10');
     _imgCtrl = TextEditingController(text: widget.producto?.imagenUrl ?? '');
-    if (widget.producto != null) _categoriaSeleccionada = widget.producto!.categoria;
+    
+    if (widget.producto != null) {
+      _categoriaSeleccionada = widget.producto!.categoria;
+      if (!_categorias.contains(_categoriaSeleccionada)) {
+        _categorias.add(_categoriaSeleccionada);
+      }
+    }
   }
 
   Future<void> _guardar() async {
